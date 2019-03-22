@@ -3242,6 +3242,49 @@ static int proc_pid_patch_state(struct seq_file *m, struct pid_namespace *ns,
 }
 #endif /* CONFIG_LIVEPATCH */
 
+static ssize_t proc_top_app_read(struct file *file,
+			char __user *buf, size_t count, loff_t *ppos)
+{
+	struct task_struct *task = get_proc_task(file_inode(file));
+	char buffer[PROC_NUMBUF];
+	size_t len;
+
+	if (!task)
+		return -ESRCH;
+	len = snprintf(buffer, sizeof(buffer), "%d\n", task->top_app);
+	return simple_read_from_buffer(buf, count, ppos, buffer, len);
+}
+
+static ssize_t proc_top_app_write(struct file *file, const char __user *buf,
+			     size_t count, loff_t *ppos)
+{
+	struct task_struct *task = get_proc_task(file_inode(file));
+	char buffer[PROC_NUMBUF];
+	int top_app;
+	int err;
+
+	memset(buffer, 0, sizeof(buffer));
+	if (count > sizeof(buffer) - 1)
+		count = sizeof(buffer) - 1;
+	if (copy_from_user(buffer, buf, count)) {
+		err = -EFAULT;
+		goto out;
+	}
+
+	err = kstrtoint(strstrip(buffer), 0, &top_app);
+	if (err)
+		goto out;
+
+	task->top_app = top_app;
+out:
+	return err < 0 ? err : count;
+}
+
+static const struct file_operations proc_top_app_operations = {
+	.read		= proc_top_app_read,
+	.write		= proc_top_app_write,
+};
+
 /*
  * Thread groups
  */
@@ -3365,6 +3408,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 #ifdef CONFIG_CPU_FREQ_TIMES
 	ONE("time_in_state", 0444, proc_time_in_state_show),
 #endif
+	REG("top_app",	S_IRUGO|S_IWUGO, proc_top_app_operations),
 };
 
 static int proc_tgid_base_readdir(struct file *file, struct dir_context *ctx)
@@ -3759,6 +3803,7 @@ static const struct pid_entry tid_base_stuff[] = {
 #ifdef CONFIG_CPU_FREQ_TIMES
 	ONE("time_in_state", 0444, proc_time_in_state_show),
 #endif
+	REG("top_app",	S_IRUGO|S_IWUGO, proc_top_app_operations),
 };
 
 static int proc_tid_base_readdir(struct file *file, struct dir_context *ctx)
