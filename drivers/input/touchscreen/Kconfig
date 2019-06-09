@@ -13,6 +13,13 @@ if INPUT_TOUCHSCREEN
 
 source "drivers/input/touchscreen/goodix_driver_gt9886/Kconfig"
 source "drivers/input/touchscreen/xiaomi/Kconfig"
+source "drivers/input/touchscreen/fts_521/Kconfig"
+
+config SECURE_TOUCH
+	bool "Secure Touch"
+
+config I2C_BY_DMA
+    bool "I2C BY DMA"
 
 config TOUCHSCREEN_PROPERTIES
 	def_tristate INPUT
