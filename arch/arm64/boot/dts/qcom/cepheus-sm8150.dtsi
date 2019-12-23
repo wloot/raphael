@@ -722,3 +722,7 @@ And public attribution of xiaomi platforms(like F1 and so and)
 		qcom,firmware-name = "slpi_cp";
 	};
 };
+
+&mdss_dsi_phy0 {	
+       qcom,panel-allow-phy-poweroff;
+};
