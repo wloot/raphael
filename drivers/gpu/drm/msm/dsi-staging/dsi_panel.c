@@ -745,9 +745,9 @@ int dsi_panel_set_doze_backlight(struct dsi_display *display, u32 bl_lvl)
 	panel = display->panel;
 	drm_dev = display->drm_dev;
 
-	if (panel->fod_hbm_enabled || panel->fod_backlight_flag) {
-		pr_info("%s FOD HBM open, skip value:%u [hbm=%d][fod_bl=%d]\n", __func__,
-			bl_lvl, panel->fod_hbm_enabled, panel->fod_backlight_flag);
+	if (panel->fod_hbm_enabled || panel->fod_dimlayer_hbm_enabled) {
+		pr_info("%s FOD HBM open, skip value:%u [hbm=%d][dimlayer_fod=%d][fod_bl=%d]\n", __func__,
+			bl_lvl, panel->fod_hbm_enabled, panel->fod_dimlayer_hbm_enabled, panel->fod_backlight_flag);
 		return rc;
 	}
 
@@ -1883,6 +1883,8 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-acl-l1-command",
 	"qcom,mdss-dsi-dispparam-acl-l2-command",
 	"qcom,mdss-dsi-dispparam-acl-l3-command",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-hbm-on-command",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-lbm-on-command",
 	"qcom,mdss-dsi-dispparam-hbm-on-command",
 	"qcom,mdss-dsi-dispparam-hbm-off-command",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command",
@@ -1957,6 +1959,8 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-dispparam-acl-l1-command-state",
 	"qcom,mdss-dsi-dispparam-acl-l2-command-state",
 	"qcom,mdss-dsi-dispparam-acl-l3-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-hbm-on-command-state",
+	"qcom,mdss-dsi-dispparam-hbm-fod-off-doze-lbm-on-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-on-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-off-command-state",
 	"qcom,mdss-dsi-dispparam-hbm-fod-on-command-state",
@@ -3637,9 +3641,19 @@ static int dsi_panel_parse_mi_config(struct dsi_panel *panel,
 		pr_info("fod_off_dimming_delay %d\n", panel->fod_off_dimming_delay);
 	}
 
+
+	panel->fod_dimlayer_enabled = utils->read_bool(of_node,
+									"qcom,mdss-dsi-panel-fod-dimlayer-enabled");
+	if (panel->fod_dimlayer_enabled) {
+		pr_info("fod dimlayer enabled.\n");
+	} else {
+		pr_info("fod dimlayer disabled.\n");
+	}
+
 	dsi_panel_parse_elvss_dimming_config(panel);
 
 	panel->fod_hbm_enabled = false;
+	panel->fod_dimlayer_hbm_enabled = false;
 	panel->skip_dimmingon = STATE_NONE;
 	panel->fod_backlight_flag = false;
 	panel->backlight_delta = 1;
@@ -4506,19 +4520,23 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 	    panel->power_mode != SDE_MODE_DPMS_LP2)
 		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
 			"ibb", REGULATOR_MODE_IDLE);
-	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP1);
-	if (rc)
-		pr_err("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
-		       panel->name, rc);
 
-	if (panel->fod_hbm_enabled || panel->fod_backlight_flag) {
-		pr_info("%s skip [hbm=%d][fod_bl=%d]\n", __func__,
-			panel->fod_hbm_enabled, panel->fod_backlight_flag);
+	if (panel->fod_hbm_enabled || panel->fod_dimlayer_hbm_enabled || panel->fod_backlight_flag) {
+		pr_info("%s skip [hbm=%d][dimlayer_hbm=%d][fod_bl=%d]\n", __func__,
+			panel->fod_hbm_enabled, panel->fod_dimlayer_hbm_enabled, panel->fod_backlight_flag);
 	} else {
 		struct dsi_display *display = NULL;
 		struct mipi_dsi_host *host = panel->host;
 		if (host)
 			display = container_of(host, struct dsi_display, host);
+
+		/* For the panel which use lp1 cmds to enter doze mode, we'd make sure
+		 * that it wouldn't disturb fod hbm state.
+		*/
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_LP1);
+		if (rc)
+			pr_err("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
+				panel->name, rc);
 
 		if (panel->last_bl_lvl > panel->doze_backlight_threshold) {
 			pr_info("dsi_panel_set_lp1 DSI_CMD_SET_DOZE_HBM");
@@ -4589,7 +4607,16 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	pr_info("%s\n", __func__);
 	mutex_lock(&panel->panel_lock);
 
-	if (!panel->fod_hbm_enabled) {
+	/**
+	 * Consider about LP1->LP2->NOLP.
+	 */
+	if (dsi_panel_is_type_oled(panel) &&
+		 (panel->power_mode == SDE_MODE_DPMS_LP1 ||
+		panel->power_mode == SDE_MODE_DPMS_LP2))
+			  dsi_pwr_panel_regulator_mode_set(&panel->power_info,
+			  "ibb", REGULATOR_MODE_NORMAL);
+
+	if (!panel->fod_hbm_enabled && !panel->fod_dimlayer_hbm_enabled) {
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_NOLP);
 		if (rc)
 			pr_err("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
@@ -4602,15 +4629,6 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 
 	if (!panel->panel_initialized)
 		goto exit;
-
-	/**
-	 * Consider about LP1->LP2->NOLP.
-	 */
-	if (dsi_panel_is_type_oled(panel) &&
-	    (panel->power_mode == SDE_MODE_DPMS_LP1 ||
-		panel->power_mode == SDE_MODE_DPMS_LP2))
-		dsi_pwr_panel_regulator_mode_set(&panel->power_info,
-			"ibb", REGULATOR_MODE_NORMAL);
 
 exit:
 	mutex_unlock(&panel->panel_lock);
@@ -5190,7 +5208,7 @@ static int panel_disp_param_send_lock(struct dsi_panel *panel, int param)
 				panel->fod_backlight_off_time = ktime_add_ms(ktime_get(), panel->fod_off_dimming_delay);
 			}
 		} else if (fod_backlight >= 0) {
-			pr_info("FOD backlight set");
+			pr_info("FOD backlight set fod_backlight %d", fod_backlight);
 			rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_DIMMINGOFF);
 			rc = dsi_panel_update_backlight(panel, fod_backlight);
 			panel->fod_target_backlight = fod_backlight;
