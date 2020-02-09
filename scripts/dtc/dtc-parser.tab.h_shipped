@@ -1,8 +1,9 @@
-/* A Bison parser, made by GNU Bison 3.0.4.  */
+/* A Bison parser, made by GNU Bison 3.5.1.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,6 +30,9 @@
 
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
+
+/* Undocumented macros, especially those whose name start with YY_,
+   are private implementation details.  Do not rely on them.  */
 
 #ifndef YY_YY_DTC_PARSER_TAB_H_INCLUDED
 # define YY_YY_DTC_PARSER_TAB_H_INCLUDED
@@ -59,23 +63,23 @@ extern int yydebug;
     DT_BITS = 269,
     DT_DEL_PROP = 270,
     DT_DEL_NODE = 271,
-    DT_PROPNODENAME = 272,
-    DT_LITERAL = 273,
-    DT_CHAR_LITERAL = 274,
-    DT_BYTE = 275,
-    DT_STRING = 276,
-    DT_LABEL = 277,
-    DT_REF = 278,
-    DT_INCBIN = 279
+    DT_OMIT_NO_REF = 272,
+    DT_PROPNODENAME = 273,
+    DT_LITERAL = 274,
+    DT_CHAR_LITERAL = 275,
+    DT_BYTE = 276,
+    DT_STRING = 277,
+    DT_LABEL = 278,
+    DT_REF = 279,
+    DT_INCBIN = 280
   };
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-
 union YYSTYPE
 {
-#line 39 "dtc-parser.y" /* yacc.c:1909  */
+#line 39 "dtc-parser.y"
 
 	char *propnodename;
 	char *labelref;
@@ -95,9 +99,9 @@ union YYSTYPE
 	uint64_t integer;
 	unsigned int flags;
 
-#line 99 "dtc-parser.tab.h" /* yacc.c:1909  */
-};
+#line 103 "dtc-parser.tab.h"
 
+};
 typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
