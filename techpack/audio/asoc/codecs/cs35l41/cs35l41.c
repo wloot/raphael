@@ -11,7 +11,7 @@
  * published by the Free Software Foundation.
  *
  */
-#define DEBUG 1
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/version.h>
