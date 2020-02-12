@@ -2759,56 +2759,44 @@ static int smblib_therm_charging(struct smb_charger *chg)
 		break;
 	}
 
-	if (chg->system_temp_level == 0) {
-		/* if therm_lvl_sel is 0, clear thermal voter */
-		rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
-		if (rc < 0)
-			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
-				rc);
-		rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
-		if (rc < 0)
-			pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
-				rc);
-	} else {
-		pr_info("thermal_icl_ua is %d, chg->system_temp_level: %d\n",
-				thermal_icl_ua, chg->system_temp_level);
-		pr_info("thermal_fcc_ua is %d\n", thermal_fcc_ua);
+	pr_info("thermal_icl_ua is %d, chg->system_temp_level: %d\n",
+			thermal_icl_ua, chg->system_temp_level);
+	pr_info("thermal_fcc_ua is %d\n", thermal_fcc_ua);
 
-		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
-			|| (chg->cp_reason == POWER_SUPPLY_CP_PPS
-				&& chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)) {
-			if (chg->system_temp_level >= ICL_LIMIT_LEVEL_THR)
-				thermal_icl_ua =
-						chg->thermal_mitigation_icl[chg->system_temp_level];
-			if (chg->system_temp_level >= ICL_LIMIT_LEVEL_THR) {
-				rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
-						true, thermal_icl_ua);
-				if (rc < 0)
-					pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
-						rc);
-			} else {
-				rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
-					false, 0);
-				if (rc < 0)
-					pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
-						rc);
-			}
-		} else {
-			if (thermal_icl_ua > 0) {
-				rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
-						thermal_icl_ua);
-				if (rc < 0)
-					pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
-						rc);
-			}
-		}
-		if (thermal_fcc_ua > 0) {
-			rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
-					thermal_fcc_ua);
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
+		|| (chg->cp_reason == POWER_SUPPLY_CP_PPS
+			&& chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)) {
+		if (chg->system_temp_level >= ICL_LIMIT_LEVEL_THR)
+			thermal_icl_ua =
+					chg->thermal_mitigation_icl[chg->system_temp_level];
+		if (chg->system_temp_level >= ICL_LIMIT_LEVEL_THR) {
+			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
+					true, thermal_icl_ua);
 			if (rc < 0)
 				pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
-						rc);
+					rc);
+		} else {
+			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
+				false, 0);
+			if (rc < 0)
+				pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
+					rc);
 		}
+	} else {
+		if (thermal_icl_ua > 0) {
+			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
+					thermal_icl_ua);
+			if (rc < 0)
+				pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
+					rc);
+		}
+	}
+	if (thermal_fcc_ua > 0) {
+		rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
+				thermal_fcc_ua);
+		if (rc < 0)
+			pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
+					rc);
 	}
 
 	return rc;
