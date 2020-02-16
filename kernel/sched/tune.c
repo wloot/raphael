@@ -589,32 +589,37 @@ boost_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	return 0;
 }
 
-#ifdef CONFIG_STUNE_ASSIST
+#ifdef CONFIG_SCHED_WALT
 static int sched_boost_override_write_wrapper(struct cgroup_subsys_state *css,
 					      struct cftype *cft, u64 override)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return sched_boost_override_write(css, cft, override);
 }
 
-#ifdef CONFIG_SCHED_WALT
 static int sched_colocate_write_wrapper(struct cgroup_subsys_state *css,
 					struct cftype *cft, u64 colocate)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return sched_colocate_write(css, cft, colocate);
 }
-#endif
+#endif /* CONFIG_SCHED_WALT */
 
 static int boost_write_wrapper(struct cgroup_subsys_state *css,
 			       struct cftype *cft, s64 boost)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return boost_write(css, cft, boost);
 }
@@ -622,12 +627,13 @@ static int boost_write_wrapper(struct cgroup_subsys_state *css,
 static int prefer_idle_write_wrapper(struct cgroup_subsys_state *css,
 				     struct cftype *cft, u64 prefer_idle)
 {
+#ifdef CONFIG_STUNE_ASSIST
 	if (task_is_booster(current))
 		return 0;
+#endif
 
 	return prefer_idle_write(css, cft, prefer_idle);
 }
-#endif
 
 static struct cftype files[] = {
 #ifdef CONFIG_SCHED_WALT
@@ -706,8 +712,8 @@ static void write_default_values(struct cgroup_subsys_state *css)
 			prefer_idle_write(css, NULL, tgt.prefer_idle);
 #ifdef CONFIG_SCHED_WALT
 			sched_colocate_write(css, NULL, tgt.colocate);
-#endif
 			sched_boost_override_write(css, NULL, tgt.no_override);
+#endif
 		}
 	}
 }
