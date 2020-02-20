@@ -543,6 +543,7 @@ struct cpu_cycle_counter_cb {
 
 extern DEFINE_PER_CPU_READ_MOSTLY(int, sched_load_boost);
 
+extern int sched_set_boost(int enable);
 #ifdef CONFIG_SCHED_WALT
 extern void sched_exit(struct task_struct *p);
 extern int register_cpu_cycle_counter_cb(struct cpu_cycle_counter_cb *cb);
@@ -553,7 +554,6 @@ extern int sched_set_init_task_load(struct task_struct *p, int init_load_pct);
 extern u32 sched_get_init_task_load(struct task_struct *p);
 extern void sched_update_cpu_freq_min_max(const cpumask_t *cpus, u32 fmin,
 					  u32 fmax);
-extern int sched_set_boost(int enable);
 extern void free_task_load_ptrs(struct task_struct *p);
 
 #define RAVG_HIST_SIZE_MAX  5
@@ -615,10 +615,6 @@ register_cpu_cycle_counter_cb(struct cpu_cycle_counter_cb *cb)
 }
 static inline void sched_set_io_is_busy(int val) {};
 
-static inline int sched_set_boost(int enable)
-{
-	return -EINVAL;
-}
 static inline void free_task_load_ptrs(struct task_struct *p) { }
 
 static inline void sched_update_cpu_freq_min_max(const cpumask_t *cpus,
