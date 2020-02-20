@@ -904,8 +904,10 @@ static void write_default_values(struct cgroup_subsys_state *css)
 #ifdef CONFIG_DYNAMIC_STUNE_BOOST
 static void filterSchedtune(struct schedtune *sti, struct schedtune **sto_p, char *st_name)
 {
-	if (!strncmp(sti->css.cgroup->kn->name, st_name, strlen(st_name)))
+	if (!strncmp(sti->css.cgroup->kn->name, st_name, strlen(st_name))) {
+		sti->sched_boost = 30;
 		*sto_p = sti;
+	}
 }
 #endif
 
