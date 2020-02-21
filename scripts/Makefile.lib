@@ -272,28 +272,7 @@ DTC ?= $(objtree)/scripts/dtc/dtc
 
 # Disable noisy checks by default
 ifeq ($(KBUILD_ENABLE_EXTRA_GCC_CHECKS),)
-DTC_FLAGS += -Wno-unit_address_vs_reg \
-	-Wno-avoid_unnecessary_addr_size \
-	-Wno-alias_paths \
-	-Wno-avoid_default_addr_size \
-	-Wno-clocks_property \
-	-Wno-cooling_device_property \
-	-Wno-gpios_property \
-	-Wno-graph_child_address \
-	-Wno-graph_port \
-	-Wno-interrupts_property \
-	-Wno-pci_bridge \
-	-Wno-pci_device_bus_num \
-	-Wno-ranges_format \
-	-Wno-reg_format \
-	-Wno-simple_bus_reg \
-	-Wno-unique_unit_address \
-	-Wno-unit_address_format
-endif
-
-ifeq ($(KBUILD_ENABLE_EXTRA_GCC_CHECKS),2)
-DTC_FLAGS += -Wnode_name_chars_strict \
-	-Wproperty_name_chars_strict
+DTC_FLAGS += -Wno-unit_address_vs_reg
 endif
 ifeq ($(DTC_EXT),)
 DTC_FLAGS += -Wno-simple_bus_reg \
