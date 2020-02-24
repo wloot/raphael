@@ -815,10 +815,6 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	} else
 		bl_temp = bl_lvl;
 
-	if (panel->dc_enable && bl_temp < panel->dc_threshold && bl_temp != 0) {
-		pr_info("skip set backlight bacase dc enable %d, bl %d, last_bl %d\n", panel->dc_enable, bl_temp, panel->last_bl_lvl);
-		return rc;
-	}
 	switch (bl->type) {
 	case DSI_BACKLIGHT_WLED:
 		rc = backlight_device_set_brightness(bl->raw_bd, bl_temp);
@@ -3659,15 +3655,6 @@ static int dsi_panel_parse_mi_config(struct dsi_panel *panel,
 		pr_info("doze backlight threshold %d \n", panel->doze_backlight_threshold);
 	}
 
-	rc = of_property_read_u32(of_node,
-			"qcom,mdss-dsi-panel-dc-threshold", &panel->dc_threshold);
-	if (rc) {
-		panel->dc_threshold = 320;
-		pr_info("default dc backlight threshold is %d\n", panel->dc_threshold);
-	} else {
-		pr_info("dc backlight threshold %d \n", panel->dc_threshold);
-	}
-
 	rc = utils->read_u32(of_node,
 			"qcom,disp-fod-off-dimming-delay", &panel->fod_off_dimming_delay);
 	if (rc) {
@@ -3697,8 +3684,6 @@ static int dsi_panel_parse_mi_config(struct dsi_panel *panel,
 	panel->bl_lowlevel_duration = 0;
 	panel->hbm_duration = 0;
 	panel->hbm_times = 0;
-
-	panel->dc_enable = false;
 
 	return rc;
 }
@@ -5042,14 +5027,6 @@ static int panel_disp_param_send_lock(struct dsi_panel *panel, int param)
 	case DISPPARAM_HBM_FOD2NORM:
 		pr_info("hbm fod to normal mode\n");
 		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_DISP_HBM_FOD2NORM);
-		break;
-	case 0x40000:
-		pr_info("DC on\n");
-		panel->dc_enable = true;
-		break;
-	case 0x50000:
-		pr_info("DC off\n");
-		panel->dc_enable = false;
 		break;
 	case DISPPARAM_HBM_FOD_OFF:
 		pr_info("hbm fod off\n");

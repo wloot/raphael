@@ -238,8 +238,6 @@ struct dsi_panel {
 	u32 fod_off_dimming_delay;
 	ktime_t fod_hbm_off_time;
 	ktime_t fod_backlight_off_time;
-	u32 dc_threshold;
-	bool dc_enable;
 
 	u32 panel_p3_mode;
 	u32 close_crc;
