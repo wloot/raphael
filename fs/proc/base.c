@@ -3277,6 +3277,7 @@ static ssize_t proc_top_app_write(struct file *file, const char __user *buf,
 
 	task->top_app = top_app;
 out:
+	put_task_struct(task);
 	return err < 0 ? err : count;
 }
 
