@@ -433,6 +433,10 @@
         status = "ok";
 };
 
+&msm_gpu {
+	tzone-names = "gpuss-0-usr";
+};
+
 &usb2_phy1 {
         status = "ok";
 };
