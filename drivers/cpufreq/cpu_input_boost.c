@@ -187,6 +187,31 @@ static int cpu_boost_thread(void *data)
 	return 0;
 }
 
+static unsigned int min_freq[3];
+static bool boosting;
+
+static unsigned int read_min_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
+		return min_freq[0];
+	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
+		return min_freq[1];
+	} else {
+		return min_freq[2];
+	}
+}
+
+static void store_min_freq(struct cpufreq_policy *policy)
+{
+	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask)) {
+		min_freq[0] = policy->min;
+	} else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask)) {
+		min_freq[1] = policy->min;
+	} else {
+		min_freq[2] = policy->min;
+	}
+}
+
 static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 			   void *data)
 {
@@ -198,25 +223,31 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Unboost when the screen is off */
 	if (test_bit(SCREEN_OFF, &b->state)) {
-		policy->min = policy->cpuinfo.min_freq;
+		policy->min = read_min_freq(policy);
+		boosting = false;
 		return NOTIFY_OK;
 	}
 
 	/* Boost CPU to max frequency for max boost */
 	if (test_bit(MAX_BOOST, &b->state)) {
+		store_min_freq(policy);
 		policy->min = get_max_boost_freq(policy);
+		boosting = true;
 		return NOTIFY_OK;
 	}
 
-	/*
-	 * Boost to policy->max if the boost frequency is higher. When
-	 * unboosting, set policy->min to the absolute min freq for the CPU.
-	 */
-	if (test_bit(INPUT_BOOST, &b->state))
+	/* Boost CPU for input boost */
+	if (test_bit(INPUT_BOOST, &b->state)) {
+		store_min_freq(policy);
 		policy->min = get_input_boost_freq(policy);
-	else
-		policy->min = policy->cpuinfo.min_freq;
+		boosting = true;
+		return NOTIFY_OK;
+	}
 
+	if (boosting) {
+		policy->min = read_min_freq(policy);
+		boosting = false;
+	}
 	return NOTIFY_OK;
 }
 
