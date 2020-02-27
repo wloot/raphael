@@ -13,6 +13,10 @@
 #include "sched.h"
 #include "tune.h"
 
+#ifdef CONFIG_DYNAMIC_STUNE_BOOST
+#include <linux/power_supply.h>
+#endif
+
 bool schedtune_initialized = false;
 extern struct reciprocal_value schedtune_spc_rdiv;
 
@@ -1210,6 +1214,44 @@ int get_sched_boost(void)
 	return st_ta->sched_boost;
 }
 
+static int power_notifier_cb(struct notifier_block *nb, unsigned long action,
+			     void *data)
+{
+	struct power_supply *psy = data;
+	union power_supply_propval val;
+	static int boost_bak;
+
+	if (action != PSY_EVENT_PROP_CHANGED ||
+	    strcmp(psy->desc->name, "battery"))
+		return NOTIFY_OK;
+
+	if (!power_supply_get_property(psy, POWER_SUPPLY_PROP_STATUS, &val)) {
+		if (unlikely(!st_ta))
+			return NOTIFY_OK;
+
+		if (val.intval == POWER_SUPPLY_STATUS_DISCHARGING) {
+			if (st_ta->sched_boost >= 10 && !boost_bak) {
+				boost_bak = st_ta->sched_boost;
+				st_ta->sched_boost = st_ta->sched_boost / 2;
+			}
+		} else {
+			st_ta->sched_boost = max(st_ta->sched_boost, boost_bak);
+			boost_bak = 0;
+		}
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block power_notifier = {
+	.notifier_call = power_notifier_cb
+};
+
+static int __init init_power_notifier(void)
+{
+	return power_supply_reg_notifier(&power_notifier);
+}
+core_initcall(init_power_notifier);
 #endif /* CONFIG_DYNAMIC_STUNE_BOOST */
 
 /*
