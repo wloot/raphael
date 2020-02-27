@@ -238,6 +238,7 @@ static int msm_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
 	return NOTIFY_OK;
 }
 
+#if CONFIG_INPUT_BOOST_DURATION_MS
 static void cpu_input_boost_input_event(struct input_handle *handle,
 					unsigned int type, unsigned int code,
 					int value)
@@ -319,6 +320,7 @@ static struct input_handler cpu_input_boost_input_handler = {
 	.name		= "cpu_input_boost_handler",
 	.id_table	= cpu_input_boost_ids
 };
+#endif
 
 static int __init cpu_input_boost_init(void)
 {
@@ -333,12 +335,14 @@ static int __init cpu_input_boost_init(void)
 		return ret;
 	}
 
+#if CONFIG_INPUT_BOOST_DURATION_MS
 	cpu_input_boost_input_handler.private = b;
 	ret = input_register_handler(&cpu_input_boost_input_handler);
 	if (ret) {
 		pr_err("Failed to register input handler, err: %d\n", ret);
 		goto unregister_cpu_notif;
 	}
+#endif
 
 	b->msm_drm_notif.notifier_call = msm_drm_notifier_cb;
 	b->msm_drm_notif.priority = INT_MAX;
@@ -360,8 +364,10 @@ static int __init cpu_input_boost_init(void)
 unregister_fb_notif:
 	msm_drm_unregister_client(&b->msm_drm_notif);
 unregister_handler:
+#if CONFIG_INPUT_BOOST_DURATION_MS
 	input_unregister_handler(&cpu_input_boost_input_handler);
 unregister_cpu_notif:
+#endif
 	cpufreq_unregister_notifier(&b->cpu_notif, CPUFREQ_POLICY_NOTIFIER);
 	return ret;
 }
