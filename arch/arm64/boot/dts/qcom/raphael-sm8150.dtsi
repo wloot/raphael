@@ -41,12 +41,14 @@ And public attribution of xiaomi platforms(like F1 and so and)
 
 &pm8150b_charger {
 	qcom,sec-charger-config = <1>;
-	qcom,usb-icl-ua = <2800000>;
-	qcom,fcc-max-ua = <5100000>;
-	qcom,fv-max-uv = <4400000>;
+	qcom,usb-icl-ua = <3000000>;
+	qcom,fcc-max-ua = <6000000>;
+	qcom,fv-max-uv = <4450000>;
+	qcom,non-fcc-fv-max-uv = <4400000>;
 	qcom,auto-recharge-soc = <99>;
 	qcom,chg-term-src = <1>;
 	qcom,chg-term-current-ma = <(-220)>;
+	qcom,ffc-term-current-ma = <(-800)>;
 	qcom,thermal-mitigation = <3000000 2800000 2600000 2400000 2200000 2100000 2000000
 				   1800000 1600000 1500000 1400000 1200000 1000000 900000
 				   800000 500000>;
@@ -79,8 +81,8 @@ And public attribution of xiaomi platforms(like F1 and so and)
 				   2500000 2500000 2400000 2200000 2000000 1600000 1300000
 				   1000000 500000>;
 	qcom,thermal-fcc-pps-cp
-				= <5100000 5000000 4900000 4800000 4600000 4400000 4200000
-				   4000000 3800000 3600000 3400000 3200000 3000000 2200000
+				= <6000000 5700000 5475000 5250000 5025000 4800000 4575000
+				   4350000 4100000 3850000 3600000 3350000 3100000 2300000
 				   1000000 500000>;
 	qcom,thermal-mitigation-dc
 				= <2200000 2000000 1800000 1600000 1400000 1200000 1100000
@@ -113,7 +115,7 @@ And public attribution of xiaomi platforms(like F1 and so and)
 	//qcom,lpd-enable;
 	qcom,lpd-disable;
 	qcom,sw-jeita-enable;
-	qcom,step-charging-enable;
+	//qcom,step-charging-enable;
 	qcom,wd-bark-time-secs = <16>;
 };
 
