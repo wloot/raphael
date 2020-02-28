@@ -1396,6 +1396,9 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 	/* suspend if 25mA or less is requested */
 	bool suspend = (icl_ua <= USBIN_25MA);
 
+	if (icl_ua == USBIN_500MA)
+		icl_ua == USBIN_900MA;
+
 	if (chg->connector_type == POWER_SUPPLY_CONNECTOR_TYPEC) {
 		rc = smblib_masked_write(chg, USB_CMD_PULLDOWN_REG,
 				EN_PULLDOWN_USB_IN_BIT,
@@ -4694,9 +4697,10 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			&& (usb_current == SUSPEND_CURRENT_UA))
 		is_float = true;
 
-	if ((usb_current > 0 && usb_current < USBIN_500MA)
-			|| (usb_current == USBIN_900MA))
+	if (usb_current > 0 && usb_current < USBIN_500MA)
 		usb_current = USBIN_500MA;
+	else if (usb_current >= USBIN_500MA)
+		usb_current = USBIN_900MA;
 
 	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_FLOAT) {
 		if (usb_current == -ETIMEDOUT
