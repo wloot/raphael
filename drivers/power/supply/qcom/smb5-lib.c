@@ -21,6 +21,7 @@
 #include <linux/iio/consumer.h>
 #include <linux/pmic-voter.h>
 #include <linux/of_batterydata.h>
+#include <linux/module.h>
 #include "smb5-lib.h"
 #include "smb5-reg.h"
 #include "schgm-flash.h"
@@ -2574,6 +2575,9 @@ int smblib_set_prop_batt_status(struct smb_charger *chg,
 #define ADAPTER_ZIMI_CAR_POWER    0x0b
 
 #ifdef CONFIG_THERMAL
+static unsigned int skip_therm = 0;
+module_param(skip_therm, uint, S_IWUSR | S_IRUGO);
+
 static int smblib_dc_therm_charging(struct smb_charger *chg,
 					int temp_level)
 {
@@ -2587,6 +2591,11 @@ static int smblib_dc_therm_charging(struct smb_charger *chg,
 		if (!chg->wls_psy)
 			return -ENODEV;
 	}
+	if (skip_therm) {
+		vote(chg->dc_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+		return 0;
+	}
+
 	rc = power_supply_get_property(chg->wls_psy,
 				POWER_SUPPLY_PROP_TX_ADAPTER,
 				&pval);
@@ -2689,6 +2698,12 @@ static int smblib_therm_charging(struct smb_charger *chg)
 
 	if (chg->system_temp_level >= MAX_TEMP_LEVEL)
 		return 0;
+
+	if (skip_therm) {
+		vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
+		vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+		return 0;
+	}
 
 	switch (chg->real_charger_type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
