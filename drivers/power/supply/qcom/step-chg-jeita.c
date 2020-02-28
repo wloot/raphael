@@ -631,6 +631,8 @@ update_time:
 	return 0;
 }
 
+extern unsigned int skip_therm;
+
 /* set JEITA_SUSPEND_HYST_UV to 70mV to avoid recharge frequently when jeita warm */
 #define JEITA_SUSPEND_HYST_UV		70000
 #define JEITA_HYSTERESIS_TEMP_THRED	150
@@ -765,7 +767,10 @@ static int handle_jeita(struct step_chg_info *chip)
 			goto set_jeita_fv;
 		}
 
-		if (curr_vfloat_uv != WARM_VFLOAT_UV) {
+		if (skip_therm) {
+			vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
+			vote(chip->dc_suspend_votable, JEITA_VOTER, 1, 0);
+		} else if (curr_vfloat_uv != WARM_VFLOAT_UV) {
 			if (curr_vbat_uv > fv_uv + 50000) {
 				if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER && fv_uv == WARM_VFLOAT_UV) {
 					vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
@@ -789,7 +794,7 @@ static int handle_jeita(struct step_chg_info *chip)
 	}
 
 set_jeita_fv:
-	vote(chip->fv_votable, JEITA_VOTER, fv_uv ? true : false, fv_uv);
+	vote(chip->fv_votable, JEITA_VOTER, (fv_uv && !skip_therm) ? true : false, fv_uv);
 
 update_time:
 	chip->jeita_last_update_time = ktime_get();
