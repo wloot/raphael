@@ -486,7 +486,7 @@ static int get_val(struct range_data *range, int hysteresis, int current_index,
 	 * of our current index.
 	 */
 	if (*new_index == current_index + 1) {
-		if (threshold < range[*new_index].low_threshold + hysteresis) {
+		if (threshold < range[*new_index].low_threshold + 5) {
 			/*
 			 * Stay in the current index, threshold is not higher
 			 * by hysteresis amount
@@ -633,6 +633,8 @@ update_time:
 
 /* set JEITA_SUSPEND_HYST_UV to 70mV to avoid recharge frequently when jeita warm */
 #define JEITA_SUSPEND_HYST_UV		70000
+#define JEITA_HYSTERESIS_TEMP_THRED	150
+#define WARM_VFLOAT_UV                  4100000
 static int handle_jeita(struct step_chg_info *chip)
 {
 	union power_supply_propval pval = {0, };
@@ -674,6 +676,14 @@ static int handle_jeita(struct step_chg_info *chip)
 		pr_err("Couldn't read %s property rc=%d\n",
 				chip->jeita_fcc_config->param.prop_name, rc);
 		return rc;
+	}
+
+	if (pval.intval <= JEITA_HYSTERESIS_TEMP_THRED) {
+		chip->jeita_fv_config->param.hysteresis = 5;
+		chip->jeita_fcc_config->param.hysteresis = 5;
+	} else  {
+		chip->jeita_fv_config->param.hysteresis = 20;
+		chip->jeita_fcc_config->param.hysteresis = 20;
 	}
 
 	rc = get_val(chip->jeita_fcc_config->fcc_cfg,
@@ -736,14 +746,45 @@ static int handle_jeita(struct step_chg_info *chip)
 	 */
 	/* if (chip->jeita_arb_en && fv_uv > 0) { */
 	if (fv_uv > 0) {
+		int curr_vfloat_uv = get_effective_result(chip->fv_votable);
+		int curr_vbat_uv;
+
 		rc = power_supply_get_property(chip->batt_psy,
 				POWER_SUPPLY_PROP_VOLTAGE_NOW, &pval);
-		if (!rc && (pval.intval > fv_uv)) {
-			vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
-			vote(chip->dc_suspend_votable, JEITA_VOTER, 1, 0);
-		} else if (pval.intval < (fv_uv - JEITA_SUSPEND_HYST_UV)) {
-			vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
-			vote(chip->dc_suspend_votable, JEITA_VOTER, 0, 0);
+
+		if (rc < 0) {
+			pr_err("Get charge type failed, rc = %d\n", rc);
+			goto set_jeita_fv;
+		}
+		curr_vbat_uv = pval.intval;
+
+		rc = power_supply_get_property(chip->batt_psy,
+				POWER_SUPPLY_PROP_CHARGE_TYPE, &pval);
+		if (rc < 0) {
+			pr_err("Get charge type failed, rc = %d\n", rc);
+			goto set_jeita_fv;
+		}
+
+		if (curr_vfloat_uv != WARM_VFLOAT_UV) {
+			if (curr_vbat_uv > fv_uv + 50000) {
+				if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER && fv_uv == WARM_VFLOAT_UV) {
+					vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
+					vote(chip->dc_suspend_votable, JEITA_VOTER, 1, 0);
+				}
+			} else if (curr_vbat_uv < (fv_uv - JEITA_SUSPEND_HYST_UV)) {
+				vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
+				vote(chip->dc_suspend_votable, JEITA_VOTER, 0, 0);
+			}
+		} else {
+			if (curr_vbat_uv > fv_uv) {
+				if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER && fv_uv == WARM_VFLOAT_UV) {
+					vote(chip->usb_icl_votable, JEITA_VOTER, true, 0);
+					vote(chip->dc_suspend_votable, JEITA_VOTER, 1, 0);
+				}
+			} else if (curr_vbat_uv < (fv_uv - JEITA_SUSPEND_HYST_UV)) {
+				vote(chip->usb_icl_votable, JEITA_VOTER, false, 0);
+				vote(chip->dc_suspend_votable, JEITA_VOTER, 0, 0);
+			}
 		}
 	}
 
@@ -910,10 +951,8 @@ int qcom_step_chg_init(struct device *dev,
 
 	chip->jeita_fcc_config->param.psy_prop = POWER_SUPPLY_PROP_TEMP;
 	chip->jeita_fcc_config->param.prop_name = "BATT_TEMP";
-	chip->jeita_fcc_config->param.hysteresis = 5;
 	chip->jeita_fv_config->param.psy_prop = POWER_SUPPLY_PROP_TEMP;
 	chip->jeita_fv_config->param.prop_name = "BATT_TEMP";
-	chip->jeita_fv_config->param.hysteresis = 5;
 
 	INIT_DELAYED_WORK(&chip->status_change_work, status_change_work);
 	INIT_DELAYED_WORK(&chip->get_config_work, get_config_work);

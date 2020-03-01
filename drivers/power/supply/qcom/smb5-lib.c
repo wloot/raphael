@@ -2092,7 +2092,7 @@ static bool is_charging_paused(struct smb_charger *chg)
 	return val & CHARGING_PAUSE_CMD_BIT;
 }
 
-int smblib_get_prop_batt_status(struct smb_charger *chg,
+static int __smblib_get_prop_batt_status(struct smb_charger *chg,
 				union power_supply_propval *val)
 {
 	union power_supply_propval pval = {0, };
@@ -2261,6 +2261,24 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 		val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING; */
 
 	return 0;
+}
+
+int smblib_get_prop_batt_status(struct smb_charger *chg,
+				union power_supply_propval *val)
+{
+	int rc;
+
+	rc = __smblib_get_prop_batt_status(chg, val);
+	spin_lock(&chg->bt_lock);
+	if (val->intval == POWER_SUPPLY_STATUS_CHARGING &&
+			!delayed_work_pending(&chg->battery_turbo_work))
+		schedule_delayed_work(&chg->battery_turbo_work,
+					msecs_to_jiffies(5000));
+	else
+		cancel_delayed_work(&chg->battery_turbo_work);
+	spin_unlock(&chg->bt_lock);
+
+	return rc;
 }
 
 int smblib_get_prop_batt_charge_type(struct smb_charger *chg,
@@ -6209,6 +6227,129 @@ int smblib_get_quick_charge_type(struct smb_charger *chg)
 	return 0;
 }
 
+#define ADC_CHG_TERM_MASK		32767
+static int smb5_config_iterm(struct smb_charger *chg, int hi_thresh, int low_thresh)
+{
+	s16 raw_hi_thresh, raw_lo_thresh;
+	u8 *buf;
+	int rc = 0;
+
+	rc = smblib_masked_write(chg, CHGR_ADC_TERM_CFG_REG,
+			TERM_BASED_ON_SYNC_CONV_OR_SAMPLE_CNT,
+			TERM_BASED_ON_SAMPLE_CNT);
+	if (rc < 0) {
+		dev_err(chg->dev, "Couldn't configure ADC_ITERM_CFG rc=%d\n",
+				rc);
+		return rc;
+	}
+
+	/*
+	 * Conversion:
+	 *	raw (A) = (scaled_mA * ADC_CHG_TERM_MASK) / (10 * 1000)
+	 * Note: raw needs to be converted to big-endian format.
+	 */
+
+	if (hi_thresh) {
+		raw_hi_thresh = ((hi_thresh * ADC_CHG_TERM_MASK) / 10000);
+		raw_hi_thresh = sign_extend32(raw_hi_thresh, 15);
+		buf = (u8 *)&raw_hi_thresh;
+		raw_hi_thresh = buf[1] | (buf[0] << 8);
+
+		rc = smblib_batch_write(chg, CHGR_ADC_ITERM_UP_THD_MSB_REG,
+				(u8 *)&raw_hi_thresh, 2);
+		if (rc < 0) {
+			dev_err(chg->dev, "Couldn't configure ITERM threshold HIGH rc=%d\n",
+					rc);
+			return rc;
+		}
+	}
+
+	if (low_thresh) {
+		raw_lo_thresh = ((low_thresh * ADC_CHG_TERM_MASK) / 10000);
+		raw_lo_thresh = sign_extend32(raw_lo_thresh, 15);
+		buf = (u8 *)&raw_lo_thresh;
+		raw_lo_thresh = buf[1] | (buf[0] << 8);
+
+		rc = smblib_batch_write(chg, CHGR_ADC_ITERM_LO_THD_MSB_REG,
+				(u8 *)&raw_lo_thresh, 2);
+		if (rc < 0) {
+			dev_err(chg->dev, "Couldn't configure ITERM threshold LOW rc=%d\n",
+					rc);
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
+static void smblib_battery_turbo_work(struct work_struct *work)
+{
+	struct smb_charger *chg = container_of(work, struct smb_charger,
+						battery_turbo_work.work);
+	union power_supply_propval pval = {0,};
+	static bool previous;
+	bool enable;
+	int rc;
+
+	if (!chg->bms_psy)
+		goto out;
+
+	if (chg->is_qc_class_b || (chg->pd_active && chg->cp_reason == POWER_SUPPLY_CP_PPS))
+		enable = true;
+	else
+		enable = false;
+
+	rc = power_supply_get_property(chg->bms_psy,
+				POWER_SUPPLY_PROP_CAPACITY, &pval);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get bms capacity:%d\n", rc);
+		goto out;
+	}
+	if (enable && (pval.intval >= 95)) {
+		smblib_dbg(chg, PR_MISC, "soc:%d is more than 95"
+				"do not setfastcharge mode\n", pval.intval);
+		enable = false;
+	}
+
+	rc = power_supply_get_property(chg->bms_psy,
+				POWER_SUPPLY_PROP_TEMP, &pval);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't get bms capacity:%d\n", rc);
+		enable = false;
+	}
+	if (enable && (pval.intval >= 450 || pval.intval <= 150)) {
+		smblib_dbg(chg, PR_MISC, "temp:%d is abort"
+				"do not setfastcharge mode\n", pval.intval);
+		enable = false;
+	}
+
+	if (chg->pd_active && !chg->pd_verifed && !enable &&
+	        get_effective_result(chg->usb_icl_votable) > PD_UNVERIFED_CURRENT)
+		vote(chg->usb_icl_votable, PD_VERIFED_VOTER, true, PD_UNVERIFED_CURRENT);
+
+	if (previous != enable) {
+		int termi;
+
+		if (enable) {
+			if (is_client_vote_enabled(chg->usb_icl_votable, PD_VERIFED_VOTER))
+				vote(chg->usb_icl_votable, PD_VERIFED_VOTER, false, PD_UNVERIFED_CURRENT);
+			termi = chg->ffc_term_curr_ma;
+		} else {
+			termi = chg->chg_term_curr_ma;
+		}
+
+		smb5_config_iterm(chg, termi, 50);
+		vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER, !enable, chg->non_fcc_batt_profile_fv_uv);
+		pr_info("fastcharge mode:%d termi:%d\n", enable, termi);
+
+		previous = enable;
+	}
+
+out:
+	schedule_delayed_work(&chg->battery_turbo_work,
+						msecs_to_jiffies(BATTERY_TURBO_DELAY_MS));
+}
+
 /* triggers when HVDCP 3.0 authentication has finished */
 static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 					      bool rising)
@@ -8596,6 +8737,7 @@ int smblib_init(struct smb_charger *chg)
 	mutex_init(&chg->smb_lock);
 	mutex_init(&chg->irq_status_lock);
 	spin_lock_init(&chg->typec_pr_lock);
+	spin_lock_init(&chg->bt_lock);
 	INIT_WORK(&chg->bms_update_work, bms_update_work);
 	INIT_WORK(&chg->pl_update_work, pl_update_work);
 	INIT_WORK(&chg->jeita_update_work, jeita_update_work);
@@ -8607,6 +8749,7 @@ int smblib_init(struct smb_charger *chg)
 	INIT_DELAYED_WORK(&chg->bb_removal_work, smblib_bb_removal_work);
 	INIT_DELAYED_WORK(&chg->lpd_ra_open_work, smblib_lpd_ra_open_work);
 	INIT_DELAYED_WORK(&chg->lpd_detach_work, smblib_lpd_detach_work);
+	INIT_DELAYED_WORK(&chg->battery_turbo_work, smblib_battery_turbo_work);
 	INIT_DELAYED_WORK(&chg->raise_qc3_vbus_work, smblib_raise_qc3_vbus_work);
 	INIT_DELAYED_WORK(&chg->charger_type_recheck, smblib_charger_type_recheck);
 	INIT_DELAYED_WORK(&chg->cc_un_compliant_charge_work,
@@ -8762,6 +8905,7 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->lpd_ra_open_work);
 		cancel_delayed_work_sync(&chg->lpd_detach_work);
 		cancel_delayed_work_sync(&chg->raise_qc3_vbus_work);
+		cancel_delayed_work_sync(&chg->battery_turbo_work);
 		cancel_delayed_work_sync(&chg->charger_type_recheck);
 		cancel_delayed_work_sync(&chg->cc_un_compliant_charge_work);
 		cancel_delayed_work_sync(&chg->thermal_regulation_work);
