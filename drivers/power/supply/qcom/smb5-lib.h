@@ -96,6 +96,7 @@ enum print_reason {
 #define CC_MODE_VOTER			"CC_MODE_VOTER"
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
 #define PD_VERIFED_VOTER		"PD_VERIFED_VOTER"
+#define NON_FFC_VFLOAT_VOTER		"NON_FFC_VFLOAT_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
@@ -122,6 +123,8 @@ enum print_reason {
 #define TYPE_RECHECK_TIME_5S	5000
 #define TYPE_RECHECK_COUNT	3
 
+#define BATTERY_TURBO_DELAY_MS 30000
+
 /* defined for un_compliant Type-C cable */
 #define CC_UN_COMPLIANT_START_DELAY_MS	700
 
@@ -135,7 +138,7 @@ enum print_reason {
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
 #define DCP_CURRENT_UA			1600000
-#define HVDCP_CURRENT_UA		2800000
+#define HVDCP_CURRENT_UA		3000000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
@@ -452,6 +455,7 @@ struct smb_charger {
 	struct mutex		dr_lock;
 	struct mutex		irq_status_lock;
 	spinlock_t		typec_pr_lock;
+	//spinlock_t		bt_lock;
 
 	/* power supplies */
 	struct power_supply		*batt_psy;
@@ -530,6 +534,7 @@ struct smb_charger {
 	struct delayed_work	role_reversal_check;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
+	struct delayed_work	battery_turbo_work;
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -668,6 +673,10 @@ struct smb_charger {
 	/* battery profile */
 	int			batt_profile_fcc_ua;
 	int			batt_profile_fv_uv;
+	int			non_fcc_batt_profile_fv_uv;
+
+	int			chg_term_curr_ma;
+	int			ffc_term_curr_ma;
 
 	int			usb_icl_delta_ua;
 	int			pulse_cnt;

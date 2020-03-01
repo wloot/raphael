@@ -495,6 +495,11 @@ static int smb5_parse_dt(struct smb5 *chip)
 		chip->dt.batt_profile_fv_uv = -EINVAL;
 
 	rc = of_property_read_u32(node,
+				"qcom,non-fcc-fv-max-uv", &chg->non_fcc_batt_profile_fv_uv);
+	if (rc < 0)
+		chg->non_fcc_batt_profile_fv_uv = -EINVAL;
+
+	rc = of_property_read_u32(node,
 				"qcom,usb-icl-ua", &chip->dt.usb_icl_ua);
 	if (rc < 0)
 		chip->dt.usb_icl_ua = -EINVAL;
@@ -518,6 +523,10 @@ static int smb5_parse_dt(struct smb5 *chip)
 
 	rc = of_property_read_u32(node, "qcom,chg-term-current-ma",
 			&chip->dt.term_current_thresh_hi_ma);
+	chg->chg_term_curr_ma = chip->dt.term_current_thresh_hi_ma;
+
+	rc = of_property_read_u32(node, "qcom,ffc-term-current-ma",
+			&chg->ffc_term_curr_ma);
 
 	if (chip->dt.term_current_src == ITERM_SRC_ADC)
 		rc = of_property_read_u32(node, "qcom,chg-term-base-current-ma",
@@ -3229,6 +3238,9 @@ static int smb5_init_hw(struct smb5 *chip)
 	/* Some h/w limit maximum supported ICL */
 	vote(chg->usb_icl_votable, HW_LIMIT_VOTER,
 			chg->hw_max_icl_ua > 0, chg->hw_max_icl_ua);
+
+	vote(chg->fv_votable, NON_FFC_VFLOAT_VOTER,
+			true, chg->non_fcc_batt_profile_fv_uv);
 
 	/* Initialize DC peripheral configurations */
 	rc = smb5_init_dc_peripheral(chg);
