@@ -2712,79 +2712,39 @@ static int smblib_therm_charging(struct smb_charger *chg)
 			thermal_fcc_ua =
 				chg->thermal_fcc_pps_cp[chg->system_temp_level];
 		} else {
-			if (chg->voltage_min_uv >= PD_MICRO_5V
-					&& chg->voltage_min_uv < PD_MICRO_5P9V)
-				thermal_icl_ua =
-						chg->thermal_mitigation_pd_base[chg->system_temp_level];
-			else if (chg->voltage_min_uv >= PD_MICRO_5P9V
-						&& chg->voltage_min_uv < PD_MICRO_6P5V)
-				thermal_icl_ua =
-						chg->thermal_mitigation_pd_base[chg->system_temp_level]
-							* PD_6P5V_PERCENT / 100;
-			else if (chg->voltage_min_uv >= PD_MICRO_6P5V
-						&& chg->voltage_min_uv < PD_MICRO_7P5V)
-				thermal_icl_ua =
-						chg->thermal_mitigation_pd_base[chg->system_temp_level]
-							* PD_7P5V_PERCENT / 100;
-			else if (chg->voltage_min_uv >= PD_MICRO_7P5V
-						&& chg->voltage_min_uv <= PD_MICRO_8P5V)
-				thermal_icl_ua =
-						chg->thermal_mitigation_pd_base[chg->system_temp_level]
-							* PD_8P5V_PERCENT / 100;
-			else if (chg->voltage_min_uv >= PD_MICRO_8P5V)
-				thermal_icl_ua =
-						chg->thermal_mitigation_pd_base[chg->system_temp_level]
-							* PD_9V_PERCENT / 100;
-			else
-				thermal_icl_ua =
-						chg->thermal_mitigation_pd_base[chg->system_temp_level];
+			thermal_icl_ua =
+				chg->thermal_mitigation_icl[chg->system_temp_level];
+			thermal_fcc_ua =
+				chg->thermal_mitigation_pd_base[chg->system_temp_level];
 		}
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
 	default:
 		thermal_icl_ua = chg->thermal_mitigation_dcp[chg->system_temp_level];
+		thermal_fcc_ua = chg->thermal_mitigation[chg->system_temp_level];
 		break;
 	}
 
-	pr_info("thermal_icl_ua is %d, chg->system_temp_level: %d\n",
-			thermal_icl_ua, chg->system_temp_level);
-	pr_info("thermal_fcc_ua is %d\n", thermal_fcc_ua);
+	pr_info("thermal_icl_ua is %d, thermal_fcc_ua is %d, chg->system_temp_level: %d\n",
+			thermal_icl_ua, thermal_fcc_ua, chg->system_temp_level);
 
-	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3
-		|| (chg->cp_reason == POWER_SUPPLY_CP_PPS
-			&& chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)) {
-		if (chg->system_temp_level >= ICL_LIMIT_LEVEL_THR)
-			thermal_icl_ua =
-					chg->thermal_mitigation_icl[chg->system_temp_level];
-		if (chg->system_temp_level >= ICL_LIMIT_LEVEL_THR) {
-			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
-					true, thermal_icl_ua);
-			if (rc < 0)
-				pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
-					rc);
-		} else {
-			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER,
-				false, 0);
-			if (rc < 0)
-				pr_err("Couldn't disable USB thermal ICL vote rc=%d\n",
-					rc);
-		}
-	} else {
-		if (thermal_icl_ua > 0) {
-			rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
-					thermal_icl_ua);
-			if (rc < 0)
-				pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
-					rc);
-		}
-	}
+	if (thermal_icl_ua > 0) {
+		rc = vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, true,
+				thermal_icl_ua);
+		if (rc < 0)
+			pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
+				rc);
+	} else
+		vote(chg->usb_icl_votable, THERMAL_DAEMON_VOTER, false, 0);
+
 	if (thermal_fcc_ua > 0) {
 		rc = vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, true,
 				thermal_fcc_ua);
 		if (rc < 0)
 			pr_err("Couldn't enable USB thermal ICL vote rc=%d\n",
 					rc);
-	}
+	} else
+		vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
 
 	return rc;
 }
