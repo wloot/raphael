@@ -5105,9 +5105,11 @@ int smblib_set_prop_pd_active(struct smb_charger *chg,
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
 
 		/*set the icl to PD_UNVERIFED_CURRENT when pd is not verifed*/
-		rc = vote(chg->usb_icl_votable, PD_VERIFED_VOTER, true, PD_UNVERIFED_CURRENT);
-		if (rc < 0)
-			smblib_err(chg, "Couldn't unvote PD_VERIFED_VOTER, rc=%d\n", rc);
+		if (!chg->pd_verifed) {
+			rc = vote(chg->fcc_votable, PD_VERIFED_VOTER, true, PD_UNVERIFED_CURRENT);
+			if (rc < 0)
+				smblib_err(chg, "Couldn't unvote PD_VERIFED_VOTER, rc=%d\n", rc);
+		}
 
 		/*
 		 * For PPS, Charge Pump is preferred over parallel charger if
@@ -6173,9 +6175,14 @@ static void smblib_raise_qc3_vbus_work(struct work_struct *work)
 		if (chg->is_qc_class_a)
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 					HVDCP_CLASS_A_MAX_UA);
-		else
+		else {
 			vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
 				HVDCP_CURRENT_UA);
+			if (!is_client_vote_enabled(chg->fcc_votable,
+						PD_VERIFED_VOTER))
+				vote(chg->fcc_votable,
+						PD_VERIFED_VOTER, false, 0);
+		}
 		/* select charge pump as second charger */
 		rc = smblib_select_sec_charger(chg, POWER_SUPPLY_CHARGER_SEC_CP,
 						POWER_SUPPLY_CP_HVDCP3, false);
@@ -6809,7 +6816,7 @@ static void typec_src_removal(struct smb_charger *chg)
 	vote(chg->fcc_votable, CLASSA_QC_FCC_VOTER, false, 0);
 	vote(chg->usb_icl_votable, QC_A_CP_ICL_MAX_VOTER, false, 0);
 	vote(chg->usb_icl_votable, QC2_UNSUPPORTED_VOTER, false, 0);
-	vote(chg->usb_icl_votable, PD_VERIFED_VOTER, false, 0);
+	vote(chg->fcc_votable, PD_VERIFED_VOTER, false, 0);
 
 	/* Remove SW thermal regulation WA votes */
 	vote(chg->usb_icl_votable, SW_THERM_REGULATION_VOTER, false, 0);

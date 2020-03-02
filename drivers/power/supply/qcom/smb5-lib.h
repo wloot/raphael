@@ -108,7 +108,7 @@ enum print_reason {
 #define MAX_PULSE			38
 #define MAX_PLUSE_COUNT_ALLOWED		30
 #define HIGH_NUM_PULSE_THR		12
-#define PD_UNVERIFED_CURRENT		3000000
+#define PD_UNVERIFED_CURRENT		4800000
 
 /* thermal micros */
 #define MAX_TEMP_LEVEL		16

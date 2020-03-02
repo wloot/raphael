@@ -1297,8 +1297,6 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_PD_AUTHENTICATION:
 		chg->pd_verifed = val->intval;
-		rc = vote(chg->usb_icl_votable, PD_VERIFED_VOTER,
-				!chg->pd_verifed, PD_UNVERIFED_CURRENT);
 		break;
 	case POWER_SUPPLY_PROP_PD_IN_HARD_RESET:
 		rc = smblib_set_prop_pd_in_hard_reset(chg, val);
