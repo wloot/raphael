@@ -737,6 +737,7 @@ static ssize_t kgsl_pwrctrl_min_pwrlevel_store(struct device *dev,
 					 struct device_attribute *attr,
 					 const char *buf, size_t count)
 {
+#if 0
 	struct kgsl_device *device = kgsl_device_from_dev(dev);
 	int ret;
 	unsigned int level = 0;
@@ -750,6 +751,7 @@ static ssize_t kgsl_pwrctrl_min_pwrlevel_store(struct device *dev,
 
 	kgsl_pwrctrl_min_pwrlevel_set(device, level);
 
+#endif
 	return count;
 }
 
