@@ -780,6 +780,9 @@ ifdef CONFIG_MODULES
 # See modpost pattern 2
 KBUILD_CFLAGS += $(call cc-option, -mno-global-merge,)
 endif
+
+KBUILD_CFLAGS += $(call cc-disable-warning, misleading-indentation)
+KBUILD_CFLAGS += $(call cc-disable-warning, void-pointer-to-int-cast)
 else
 
 KBUILD_CFLAGS += $(call cc-option,-fno-delete-null-pointer-checks,)
