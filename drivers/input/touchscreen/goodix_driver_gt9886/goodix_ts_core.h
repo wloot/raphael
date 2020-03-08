@@ -702,8 +702,8 @@ static inline u32 checksum_be32(u8 *data, u32 size)
 #define ECHKSUM					1002
 #define EMEMCMP					1003
 
-#define CONFIG_GOODIX_DEBUG
 /* log macro */
+/*
 #define ts_info(fmt, arg...)	pr_info("[GTP9886-INF][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
 #define	ts_err(fmt, arg...)		pr_err("[GTP9886-ERR][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
 #define boot_log(fmt, arg...)	g_info(fmt, ##arg)
@@ -712,6 +712,11 @@ static inline u32 checksum_be32(u8 *data, u32 size)
 #else
 #define ts_debug(fmt, arg...)	do {} while (0)
 #endif
+*/
+#define ts_debug(fmt, arg...)	do {} while (0)
+#define ts_info(fmt, arg...)	do {} while (0)
+#define	ts_err(fmt, arg...)		pr_info("[GTP9886-ERR][%s:%d] "fmt"\n", __func__, __LINE__, ##arg)
+#define boot_log(fmt, arg...)	ts_info(fmt, ##arg)
 
 /**
  * goodix_register_ext_module - interface for external module
