@@ -432,7 +432,7 @@ static void popp_trans1(struct kgsl_device *device)
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct kgsl_pwrlevel *pl = &pwr->pwrlevels[pwr->active_pwrlevel];
 	struct kgsl_pwrscale *psc = &device->pwrscale;
-	int old_level = psc->popp_level;
+	int __maybe_unused old_level = psc->popp_level;
 
 	switch (old_level) {
 	case 0:
@@ -467,7 +467,7 @@ static int popp_trans2(struct kgsl_device *device, int level)
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct kgsl_pwrscale *psc = &device->pwrscale;
-	int old_level = psc->popp_level;
+	int __maybe_unused old_level = psc->popp_level;
 
 	if (!test_bit(POPP_ON, &psc->popp_state))
 		return level;
