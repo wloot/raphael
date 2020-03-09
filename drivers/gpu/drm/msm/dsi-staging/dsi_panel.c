@@ -965,7 +965,7 @@ error:
 	return rc;
 }
 
-static unsigned int framerate_override;
+unsigned int framerate_override;
 module_param(framerate_override, uint, 0444);
 
 static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
@@ -999,7 +999,8 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 			mode->clk_rate_hz = 1265000000;
 		else if (framerate_override == 1)
 			mode->clk_rate_hz = 1210000000;
-	}
+	} else
+		framerate_override = 1;
 	display_mode->priv_info->clk_rate_hz = mode->clk_rate_hz;
 
 	rc = utils->read_u32(utils->data, "qcom,mdss-mdp-transfer-time-us",
