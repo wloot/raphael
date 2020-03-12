@@ -49,7 +49,7 @@
 #define	PPC_DRIVER_MTPLLSRC			0x00000400
 #define	PPC_DRIVER_CFGDEV_NONCRC	0x00000101
 
-#define TAS2557_CAL_NAME    "/persist/audio/tas2557_cal.bin"
+#define TAS2557_CAL_NAME    "/mnt/vendor/persist/audio/tas2557_cal.bin"
 #define RESTART_MAX 3
 
 
