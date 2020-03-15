@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -160,7 +160,7 @@ static struct smb_params smb5_pm8150b_params = {
 		.name   = "DC input current limit",
 		.reg    = DCDC_CFG_REF_MAX_PSNS_REG,
 		.min_u  = 0,
-		.max_u  = DCIN_ICL_MAX_UA,
+		.max_u  = 1500000,
 		.step_u = 50000,
 	},
 	.jeita_cc_comp_hot	= {
@@ -396,7 +396,7 @@ static int smb5_parse_dt(struct smb5 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
 	struct device_node *node = chg->dev->of_node;
-	int rc, byte_len, tmp;
+	int rc, byte_len;
 
 	if (!node) {
 		pr_err("device tree node missing\n");
@@ -653,12 +653,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 	if (chg->chg_param.hvdcp3_max_icl_ua <= 0)
 		chg->chg_param.hvdcp3_max_icl_ua = MICRO_3PA;
 
-	chg->wls_icl_ua = DCIN_ICL_MAX_UA;
-	rc = of_property_read_u32(node, "qcom,wls-current-max-ua",
-			&tmp);
-	if (!rc && tmp < DCIN_ICL_MAX_UA)
-		chg->wls_icl_ua = tmp;
-
 	return 0;
 }
 
@@ -728,8 +722,6 @@ static enum power_supply_property smb5_usb_props[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_VPH,
 	POWER_SUPPLY_PROP_THERM_ICL_LIMIT,
 	POWER_SUPPLY_PROP_SKIN_HEALTH,
-	POWER_SUPPLY_PROP_APSD_RERUN,
-	POWER_SUPPLY_PROP_APSD_TIMEOUT,
 };
 
 static int smb5_usb_get_prop(struct power_supply *psy,
@@ -907,12 +899,6 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_SKIN_HEALTH:
 		val->intval = smblib_get_skin_temp_status(chg);
 		break;
-	case POWER_SUPPLY_PROP_APSD_RERUN:
-		val->intval = 0;
-		break;
-	case POWER_SUPPLY_PROP_APSD_TIMEOUT:
-		val->intval = chg->apsd_ext_timeout;
-		break;
 	default:
 		pr_err("get prop %d is not supported in usb\n", psp);
 		rc = -EINVAL;
@@ -1002,11 +988,6 @@ static int smb5_usb_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ADAPTER_CC_MODE:
 		chg->adapter_cc_mode = val->intval;
 		break;
-	case POWER_SUPPLY_PROP_APSD_RERUN:
-		del_timer_sync(&chg->apsd_timer);
-		chg->apsd_ext_timeout = false;
-		smblib_rerun_apsd(chg);
-		break;
 	default:
 		pr_err("set prop %d is not supported\n", psp);
 		rc = -EINVAL;
@@ -1025,7 +1006,6 @@ static int smb5_usb_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_THERM_ICL_LIMIT:
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX_LIMIT:
 	case POWER_SUPPLY_PROP_ADAPTER_CC_MODE:
-	case POWER_SUPPLY_PROP_APSD_RERUN:
 		return 1;
 	default:
 		break;
@@ -1181,7 +1161,6 @@ static enum power_supply_property smb5_usb_main_props[] = {
 	POWER_SUPPLY_PROP_FORCE_MAIN_ICL,
 	POWER_SUPPLY_PROP_COMP_CLAMP_LEVEL,
 	POWER_SUPPLY_PROP_HEALTH,
-	POWER_SUPPLY_PROP_HOT_TEMP,
 };
 
 static int smb5_usb_main_get_prop(struct power_supply *psy,
@@ -1245,10 +1224,6 @@ static int smb5_usb_main_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = smblib_get_prop_smb_health(chg);
 		break;
-	/* Use this property to report overheat status */
-	case POWER_SUPPLY_PROP_HOT_TEMP:
-		val->intval = chg->thermal_overheat;
-		break;
 	default:
 		pr_debug("get prop %d is not supported in usb-main\n", psp);
 		rc = -EINVAL;
@@ -1269,7 +1244,6 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 	struct smb5 *chip = power_supply_get_drvdata(psy);
 	struct smb_charger *chg = &chip->chg;
 	union power_supply_propval pval = {0, };
-	enum power_supply_type real_chg_type = chg->real_charger_type;
 	int rc = 0, offset_ua = 0;
 
 	switch (psp) {
@@ -1329,9 +1303,6 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_FORCE_MAIN_FCC:
 		vote_override(chg->fcc_main_votable, CC_MODE_VOTER,
 				(val->intval < 0) ? false : true, val->intval);
-		if (val->intval >= 0)
-			chg->chg_param.forced_main_fcc = val->intval;
-
 		/* Main FCC updated re-calculate FCC */
 		rerun_election(chg->fcc_votable);
 		break;
@@ -1339,15 +1310,11 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 		vote_override(chg->usb_icl_votable, CC_MODE_VOTER,
 				(val->intval < 0) ? false : true, val->intval);
 		/* Main ICL updated re-calculate ILIM */
-		if (real_chg_type == POWER_SUPPLY_TYPE_USB_HVDCP_3 ||
-			real_chg_type == POWER_SUPPLY_TYPE_USB_HVDCP_3P5)
+		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
 			rerun_election(chg->fcc_votable);
 		break;
 	case POWER_SUPPLY_PROP_COMP_CLAMP_LEVEL:
 		rc = smb5_set_prop_comp_clamp_level(chg, val);
-		break;
-	case POWER_SUPPLY_PROP_HOT_TEMP:
-		rc = smblib_set_prop_thermal_overheat(chg, val->intval);
 		break;
 	default:
 		pr_err("set prop %d is not supported\n", psp);
@@ -1369,7 +1336,6 @@ static int smb5_usb_main_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_FORCE_MAIN_FCC:
 	case POWER_SUPPLY_PROP_FORCE_MAIN_ICL:
 	case POWER_SUPPLY_PROP_COMP_CLAMP_LEVEL:
-	case POWER_SUPPLY_PROP_HOT_TEMP:
 		rc = 1;
 		break;
 	default:
@@ -1502,14 +1468,15 @@ static int smb5_dc_set_prop(struct power_supply *psy,
 static int smb5_dc_prop_is_writeable(struct power_supply *psy,
 		enum power_supply_property psp)
 {
+	int rc;
+
 	switch (psp) {
-	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION:
-		return 1;
 	default:
+		rc = 0;
 		break;
 	}
 
-	return 0;
+	return rc;
 }
 
 static const struct power_supply_desc dc_psy_desc = {
@@ -1581,7 +1548,6 @@ static enum power_supply_property smb5_batt_props[] = {
 	POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE,
 };
 
-#define DEBUG_ACCESSORY_TEMP_DECIDEGC	250
 static int smb5_batt_get_prop(struct power_supply *psy,
 		enum power_supply_property psp,
 		union power_supply_propval *val)
@@ -1662,11 +1628,7 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_batt_iterm(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-		if (chg->typec_mode == POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY)
-			val->intval = DEBUG_ACCESSORY_TEMP_DECIDEGC;
-		else
-			rc = smblib_get_prop_from_bms(chg,
-						POWER_SUPPLY_PROP_TEMP, val);
+		rc = smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_TEMP, val);
 		break;
 	case POWER_SUPPLY_PROP_TECHNOLOGY:
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
@@ -2496,8 +2458,8 @@ static int smb5_init_dc_peripheral(struct smb_charger *chg)
 	if (chg->chg_param.smb_version == PMI632_SUBTYPE)
 		return 0;
 
-	/* Set DCIN ICL to 100 mA */
-	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, DCIN_ICL_MIN_UA);
+	/* set DC icl_max 1A */
+	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, 1000000);
 	if (rc < 0) {
 		dev_err(chg->dev, "Couldn't set dc_icl rc=%d\n", rc);
 		return rc;
@@ -3134,8 +3096,7 @@ static struct smb_irq_info smb5_irqs[] = {
 	},
 	[DCIN_UV_IRQ] = {
 		.name		= "dcin-uv",
-		.handler	= dcin_uv_irq_handler,
-		.wake		= true,
+		.handler	= default_irq_handler,
 	},
 	[DCIN_OV_IRQ] = {
 		.name		= "dcin-ov",
