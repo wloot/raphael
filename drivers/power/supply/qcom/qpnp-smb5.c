@@ -462,9 +462,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chg->lpd_enabled = of_property_read_bool(node,
 				"qcom,lpd-enable");
 
-	chg->dynamic_fv_enabled = of_property_read_bool(node,
-				"qcom,dynamic-fv-enable");
-
 	chg->qc_class_ab = of_property_read_bool(node,
 				"qcom,distinguish-qc-class-ab");
 
@@ -2063,7 +2060,6 @@ static int smb5_init_wireless_psy(struct smb5 *chip)
 static enum power_supply_property smb5_batt_props[] = {
 	POWER_SUPPLY_PROP_INPUT_SUSPEND,
 	POWER_SUPPLY_PROP_LIQUID_DETECTION,
-	POWER_SUPPLY_PROP_DYNAMIC_FV_ENABLED,
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_HEALTH,
 	POWER_SUPPLY_PROP_PRESENT,
@@ -2243,9 +2239,6 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		else
 			val->intval = 0;
 		break;
-	case POWER_SUPPLY_PROP_DYNAMIC_FV_ENABLED:
-		val->intval = chg->dynamic_fv_enabled;
-		break;
 	default:
 		pr_err("batt power supply prop %d not supported\n", psp);
 		return -EINVAL;
@@ -2352,9 +2345,6 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		chg->lpd_status = val->intval;
 		power_supply_changed(chg->batt_psy);
 		break;
-	case POWER_SUPPLY_PROP_DYNAMIC_FV_ENABLED:
-		chg->dynamic_fv_enabled = !!val->intval;
-		break;
 	case POWER_SUPPLY_PROP_FCC_STEPPER_ENABLE:
 		chg->fcc_stepper_enable = val->intval;
 		break;
@@ -2381,7 +2371,6 @@ static int smb5_batt_prop_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_DIE_HEALTH:
 	case POWER_SUPPLY_PROP_DC_THERMAL_LEVELS:
 	case POWER_SUPPLY_PROP_LIQUID_DETECTION:
-	case POWER_SUPPLY_PROP_DYNAMIC_FV_ENABLED:
 		return 1;
 	default:
 		break;

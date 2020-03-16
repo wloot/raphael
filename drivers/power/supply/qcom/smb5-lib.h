@@ -444,7 +444,6 @@ struct smb_charger {
 	bool			pd_not_supported;
 	bool			init_once;
 	bool			support_liquid;
-	bool			dynamic_fv_enabled;
 
 	/* locks */
 	struct mutex		smb_lock;

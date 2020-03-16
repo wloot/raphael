@@ -417,7 +417,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(toggle_stat),
 	POWER_SUPPLY_ATTR(type_recheck),
 	POWER_SUPPLY_ATTR(liquid_detection),
-	POWER_SUPPLY_ATTR(dynamic_fv_enabled),
 	POWER_SUPPLY_ATTR(main_fcc_max),
 	POWER_SUPPLY_ATTR(fg_reset),
 	POWER_SUPPLY_ATTR(qc_opti_disable),
