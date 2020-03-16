@@ -120,7 +120,6 @@ And public attribution of xiaomi platforms(like F1 and so and)
 	qcom,sw-jeita-enable;
 	qcom,wd-bark-time-secs = <16>;
 	qcom,support-wireless;
-	qcom,dynamic-fv-enable;
 	qcom,lpd-disable;
 };
 

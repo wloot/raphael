@@ -30,11 +30,6 @@ qcom,sun {
 				3201000  3300000  1000000
 				3301000  4200000  5100000
 				4201000  4400000  4000000>;
-	qcom,dynamic-fv-ranges = <0    100  4400000
-				101  200  4380000
-				201  300  4360000
-				301  400  4340000
-				401  500  4340000>;
 	qcom,max-voltage-uv = <4400000>;
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,nom-batt-capacity-mah = <4000>;
