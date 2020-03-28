@@ -77,6 +77,9 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 		if (cpu > (num_present_cpus() - 1))
 			return -EINVAL;
 
+		if (cpu < 4 && val == 1305600)
+			return -EINVAL;
+
 		i_cpu_stats = &per_cpu(cpu_stats, cpu);
 
 		i_cpu_stats->min = val;
