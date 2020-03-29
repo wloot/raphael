@@ -894,10 +894,7 @@ exit_update_path:
 	return ret;
 }
 
-static int update_alc_vote(struct device *alc_dev, uint64_t act_req_fa_lat,
-			uint64_t act_req_idle_time, uint64_t slp_req_fa_lat,
-			uint64_t slp_req_idle_time, uint64_t cur_fa_lat,
-			uint64_t cur_idle_time, int idx, int ctx)
+static int update_alc_vote(struct device *alc_dev, int idx)
 {
 	struct link_node *lnode = NULL;
 	struct msm_bus_node_device_type *dev_info = NULL;
@@ -1422,8 +1419,7 @@ static int update_client_alc(struct msm_bus_client *client, bool log_trns,
 							unsigned int idx)
 {
 	int lnode, cur_idx;
-	uint64_t req_idle_time, req_fal, dual_idle_time, dual_fal,
-	cur_idle_time, cur_fal;
+	uint64_t req_idle_time, req_fal, dual_idle_time, dual_fal;
 	int ret = 0;
 	struct msm_bus_scale_pdata *pdata;
 	struct device *src_dev;
@@ -1456,9 +1452,7 @@ static int update_client_alc(struct msm_bus_client *client, bool log_trns,
 		dual_idle_time = req_idle_time;
 	}
 
-	ret = update_alc_vote(src_dev, req_fal, req_idle_time, dual_fal,
-		dual_idle_time, cur_fal, cur_idle_time, lnode,
-		pdata->active_only);
+	ret = update_alc_vote(src_dev, lnode);
 
 	if (ret) {
 		MSM_BUS_ERR("%s: Update path failed! %d ctx %d\n",
