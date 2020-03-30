@@ -267,7 +267,7 @@ enum {
 static int smb5_get_prop_input_voltage_regulation(struct smb_charger *chg,
 					union power_supply_propval *val)
 {
-	int rc;
+	int rc = 0;
 
 	chg->idtp_psy = power_supply_get_by_name("idt");
 	if (chg->idtp_psy)
