@@ -2488,7 +2488,7 @@ int ipa_mpm_mhip_xdci_pipe_enable(enum ipa_usb_teth_prot xdci_teth_prot)
 		return 0;
 	}
 
-	if (mhip_client != IPA_MPM_MHIP_USB_DPL)
+	if (mhip_client != IPA_MPM_MHIP_USB_DPL) {
 		/* Start UL MHIP channel for offloading teth connection */
 		status = ipa_mpm_start_stop_mhip_chan(IPA_MPM_MHIP_CHAN_UL,
 							probe_id,
@@ -2531,6 +2531,7 @@ int ipa_mpm_mhip_xdci_pipe_enable(enum ipa_usb_teth_prot xdci_teth_prot)
 				false, &is_acted);
 		IPA_MPM_ERR("Err not found\n");
 		break;
+	}
 	}
 	return ret;
 }
