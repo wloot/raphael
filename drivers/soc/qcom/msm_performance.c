@@ -26,6 +26,7 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/sched/core_ctl.h>
+#include <linux/sched/sysctl.h>
 
 /*
  * Sched will provide the data for every 20ms window,
@@ -79,6 +80,14 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 
 		if (cpu < 4 && val == 1305600)
 			return -EINVAL;
+
+		if (cpu == 7) {
+			if (val >= 2956800) {
+				sysctl_sched_energy_aware = 0;
+			} else {
+				sysctl_sched_energy_aware = 1;
+			}
+		}
 
 		i_cpu_stats = &per_cpu(cpu_stats, cpu);
 
