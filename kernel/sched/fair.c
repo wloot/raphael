@@ -8436,7 +8436,6 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 		}
 
 		record_wakee(p);
-		want_energy = wake_energy(p, prev_cpu, sd_flag, wake_flags);
 		want_affine = !want_energy &&
 			      !wake_wide(p, sibling_count_hint) &&
 			      !_wake_cap &&
