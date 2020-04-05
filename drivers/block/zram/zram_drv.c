@@ -33,6 +33,7 @@
 #include <linux/sysfs.h>
 #include <linux/debugfs.h>
 #include <linux/cpuhotplug.h>
+#include <linux/memblock.h>
 
 #include "zram_drv.h"
 
@@ -1825,7 +1826,14 @@ static ssize_t disksize_store(struct device *dev,
 	u64 disksize;
 	struct zcomp *comp;
 	struct zram *zram = dev_to_zram(dev);
+	unsigned int ram_giga;
 	int err;
+
+	ram_giga = memblock_phys_mem_size() >> 30;
+	if (ram_giga > 8) {
+		pr_info("Dram size is %u which greater than 8G, disabling zram.\n", ram_giga);
+		return -EINVAL;
+	}
 
 	disksize = memparse(buf, NULL);
 	if (!disksize)
