@@ -1258,6 +1258,9 @@ struct task_struct {
 	u64				timer_slack_ns;
 	u64				default_timer_slack_ns;
 
+	unsigned int			top_app;
+	unsigned int			inherit_top_app;
+
 #ifdef CONFIG_KASAN
 	unsigned int			kasan_depth;
 #endif
@@ -1969,6 +1972,40 @@ static inline void set_wake_up_idle(bool enabled)
 		current->flags |= PF_WAKE_UP_IDLE;
 	else
 		current->flags &= ~PF_WAKE_UP_IDLE;
+}
+
+#define INHERIT_DEPTH 2
+
+static inline bool is_top_app(struct task_struct *p)
+{
+	return p && p->top_app > 0;
+}
+
+static inline bool is_inherit_top_app(struct task_struct *p)
+{
+	return p && p->inherit_top_app > 0;
+}
+
+static inline bool is_critical_task(struct task_struct *p)
+{
+	return is_top_app(p) || is_inherit_top_app(p);
+}
+
+static inline void set_inherit_top_app(struct task_struct *p,
+				struct task_struct *from)
+{
+	if (!p || !from)
+		return;
+	if (is_critical_task(p) || from->inherit_top_app >= INHERIT_DEPTH)
+		return;
+	p->inherit_top_app = from->inherit_top_app + 1;
+}
+
+static inline void restore_inherit_top_app(struct task_struct *p)
+{
+	if (p && is_inherit_top_app(p)) {
+		p->inherit_top_app = 0;
+	}
 }
 
 #endif
