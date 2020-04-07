@@ -137,8 +137,6 @@ extern void init_sched_groups_capacity(int cpu, struct sched_domain *sd);
 static inline void cpu_load_update_active(struct rq *this_rq) { }
 #endif
 
-extern bool energy_aware(void);
-
 /*
  * Helpers for converting nanosecond timing to jiffy resolution
  */
