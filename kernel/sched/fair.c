@@ -5818,7 +5818,7 @@ static inline bool
 cpu_is_in_target_set(struct task_struct *p, int cpu)
 {
 	struct root_domain *rd = cpu_rq(cpu)->rd;
-	int first_cpu = (schedtune_task_boost(p)) ?
+	int first_cpu = is_critical_task(p) ?
 		rd->mid_cap_orig_cpu : rd->min_cap_orig_cpu;
 	int next_usable_cpu = cpumask_next(first_cpu - 1, &p->cpus_allowed);
 	return cpu >= next_usable_cpu || next_usable_cpu >= nr_cpu_ids;
@@ -7358,9 +7358,10 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 	if (capacity == max_capacity)
 		return true;
 
-	if (is_min_capacity_cpu(cpu)) {
-		if (task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
-			schedtune_task_boost(p) > 0)
+	if (is_critical_task(p)) {
+		if (is_min_capacity_cpu(cpu) && top_app_conservative_boosting())
+			return false;
+		if (is_top_app(p) && top_app_full_throttle_boosting())
 			return false;
 	}
 
@@ -8408,16 +8409,15 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int want_energy = 0;
 	int sync = wake_flags & WF_SYNC;
 
-	if (energy_aware()) {
-		rcu_read_lock();
+	rcu_read_lock();
+
+	if (energy_aware() || !is_critical_task(p)) {
 		new_cpu = find_energy_efficient_cpu(energy_sd, p,
 						cpu, prev_cpu, sync,
 						sibling_count_hint);
 		rcu_read_unlock();
 		return new_cpu;
 	}
-
-	rcu_read_lock();
 
 	if (sd_flag & SD_BALANCE_WAKE) {
 		int _wake_cap = wake_cap(p, cpu, prev_cpu);

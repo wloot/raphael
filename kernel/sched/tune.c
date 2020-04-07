@@ -471,9 +471,22 @@ int schedtune_cpu_boost(int cpu)
 	return bg->boost_max;
 }
 
+static inline int __schedtune_task_boost(struct task_struct *p)
+{
+	int task_boost = task_schedtune(p)->boost;
+
+	if (is_critical_task(p)) {
+		if (top_app_full_throttle_boosting())
+			task_boost = 30;
+		else if (top_app_conservative_boosting())
+			task_boost = 15;
+	}
+
+	return task_boost;
+}
+
 int schedtune_task_boost(struct task_struct *p)
 {
-	struct schedtune *st;
 	int task_boost;
 
 	if (unlikely(!schedtune_initialized))
@@ -481,8 +494,7 @@ int schedtune_task_boost(struct task_struct *p)
 
 	/* Get task boost value */
 	rcu_read_lock();
-	st = task_schedtune(p);
-	task_boost = st->boost;
+	task_boost = __schedtune_task_boost(p);
 	rcu_read_unlock();
 
 	return task_boost;
@@ -493,15 +505,13 @@ int schedtune_task_boost(struct task_struct *p)
  */
 int schedtune_task_boost_rcu_locked(struct task_struct *p)
 {
-	struct schedtune *st;
 	int task_boost;
 
 	if (unlikely(!schedtune_initialized))
 		return 0;
 
 	/* Get task boost value */
-	st = task_schedtune(p);
-	task_boost = st->boost;
+	task_boost = __schedtune_task_boost(p);
 
 	return task_boost;
 }

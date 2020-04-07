@@ -25,6 +25,10 @@
 #define RESTRAINED_BOOST_DISABLE -3
 #endif
 
+unsigned int top_app_full_throttle_boost;
+unsigned int top_app_conservative_boost;
+unsigned int top_app_restrained_boost;
+
 /*
  * Scheduler boost is a mechanism to temporarily place tasks on CPUs
  * with higher capacity than those where a task would have normally
@@ -89,6 +93,7 @@ static void sched_full_throttle_boost_enter(void)
 	core_ctl_set_boost(true);
 	walt_enable_frequency_aggregation(true);
 #endif
+	top_app_full_throttle_boost = 1;
 }
 
 static void sched_full_throttle_boost_exit(void)
@@ -97,6 +102,7 @@ static void sched_full_throttle_boost_exit(void)
 	core_ctl_set_boost(false);
 	walt_enable_frequency_aggregation(false);
 #endif
+	top_app_full_throttle_boost = 0;
 }
 
 static void sched_conservative_boost_enter(void)
@@ -104,6 +110,7 @@ static void sched_conservative_boost_enter(void)
 #ifdef CONFIG_SCHED_WALT
 	update_cgroup_boost_settings();
 #endif
+	top_app_conservative_boost = 1;
 }
 
 static void sched_conservative_boost_exit(void)
@@ -111,6 +118,7 @@ static void sched_conservative_boost_exit(void)
 #ifdef CONFIG_SCHED_WALT
 	restore_cgroup_boost_settings();
 #endif
+	top_app_conservative_boost = 0;
 }
 
 static void sched_restrained_boost_enter(void)
@@ -118,6 +126,7 @@ static void sched_restrained_boost_enter(void)
 #ifdef CONFIG_SCHED_WALT
 	walt_enable_frequency_aggregation(true);
 #endif
+	top_app_restrained_boost = 1;
 }
 
 static void sched_restrained_boost_exit(void)
@@ -125,6 +134,7 @@ static void sched_restrained_boost_exit(void)
 #ifdef CONFIG_SCHED_WALT
 	walt_enable_frequency_aggregation(false);
 #endif
+	top_app_restrained_boost = 0;
 }
 
 struct sched_boost_data {

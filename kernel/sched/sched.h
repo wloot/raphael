@@ -3112,3 +3112,20 @@ struct sched_avg_stats {
 	int nr_max;
 };
 extern void sched_get_nr_running_avg(struct sched_avg_stats *stats);
+
+extern unsigned int top_app_full_throttle_boost;
+extern unsigned int top_app_conservative_boost;
+extern unsigned int top_app_restrained_boost;
+
+static inline bool top_app_full_throttle_boosting(void) {
+	return top_app_full_throttle_boost;
+}
+
+static inline bool top_app_conservative_boosting(void) {
+	return top_app_full_throttle_boosting() || top_app_conservative_boost;
+}
+
+static inline bool top_app_restrained_boosting(void) {
+	return top_app_conservative_boosting() || top_app_restrained_boost;
+}
+
