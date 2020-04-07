@@ -2648,6 +2648,9 @@ static ssize_t top_app_write(struct file *file, const char __user *buf,
 	if (!p)
 		return -ESRCH;
 
+	if (p->top_app_no_override)
+		goto out;
+
 	if (p != current) {
 		if (!capable(CAP_SYS_NICE)) {
 			count = -EPERM;
@@ -2675,6 +2678,53 @@ static const struct file_operations proc_pid_set_top_app_operations = {
 	.open		= top_app_open,
 	.read		= seq_read,
 	.write		= top_app_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+
+static ssize_t top_app_no_override_write(struct file *file, const char __user *buf,
+                                        size_t count, loff_t *offset)
+{
+	struct inode *inode = file_inode(file);
+	struct task_struct *p;
+	unsigned int top_app;
+	int err;
+
+	err = kstrtouint_from_user(buf, count, 10, &top_app);
+	if (err < 0)
+		return err;
+
+	p = get_proc_task(inode);
+	if (!p)
+		return -ESRCH;
+
+	if (p != current) {
+		if (!capable(CAP_SYS_NICE)) {
+			count = -EPERM;
+			goto out;
+		}
+
+		err = security_task_setscheduler(p);
+		if (err) {
+			count = err;
+			goto out;
+		}
+	}
+
+	task_lock(p);
+	p->top_app = p->top_app_no_override = top_app;
+	task_unlock(p);
+
+out:
+	put_task_struct(p);
+
+	return count;
+}
+
+static const struct file_operations proc_pid_set_top_app_no_override_operations = {
+	.open		= top_app_open,
+	.read		= seq_read,
+	.write		= top_app_no_override_write,
 	.llseek		= seq_lseek,
 	.release	= single_release,
 };
@@ -3336,6 +3386,7 @@ static const struct pid_entry tgid_base_stuff[] = {
 	ONE("time_in_state", 0444, proc_time_in_state_show),
 #endif
 	REG("top_app", S_IRUGO|S_IWUGO, proc_pid_set_top_app_operations),
+	REG("top_app_no_override", S_IRUGO|S_IWUGO, proc_pid_set_top_app_no_override_operations),
 };
 
 static int proc_tgid_base_readdir(struct file *file, struct dir_context *ctx)
@@ -3731,6 +3782,7 @@ static const struct pid_entry tid_base_stuff[] = {
 	ONE("time_in_state", 0444, proc_time_in_state_show),
 #endif
 	REG("top_app", S_IRUGO|S_IWUGO, proc_pid_set_top_app_operations),
+	REG("top_app_no_override", S_IRUGO|S_IWUGO, proc_pid_set_top_app_no_override_operations),
 };
 
 static int proc_tid_base_readdir(struct file *file, struct dir_context *ctx)

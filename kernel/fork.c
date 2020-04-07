@@ -2121,6 +2121,7 @@ long _do_fork(unsigned long clone_flags,
 
 		p->top_app = 0;
 		p->inherit_top_app = 0;
+		p->top_app_no_override = 0;
 
 		wake_up_new_task(p);
 
