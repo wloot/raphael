@@ -479,7 +479,7 @@ static inline int __schedtune_task_boost(struct task_struct *p)
 		if (top_app_full_throttle_boosting())
 			task_boost = 30;
 		else if (top_app_conservative_boosting())
-			task_boost = 15;
+			task_boost = 10;
 	}
 
 	return task_boost;
