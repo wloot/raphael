@@ -96,6 +96,7 @@ enum print_reason {
 #define CC_MODE_VOTER			"CC_MODE_VOTER"
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
 #define PD_VERIFED_VOTER		"PD_VERIFED_VOTER"
+#define NON_FFC_VFLOAT_VOTER		"NON_FFC_VFLOAT_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
@@ -108,22 +109,10 @@ enum print_reason {
 #define MAX_PULSE			38
 #define MAX_PLUSE_COUNT_ALLOWED		30
 #define HIGH_NUM_PULSE_THR		12
-#define PD_UNVERIFED_CURRENT		3000000
+#define PD_UNVERIFED_CURRENT		4800000
 
 /* thermal micros */
 #define MAX_TEMP_LEVEL		16
-/* percent of ICL compared to base 5V for different PD voltage_min voltage */
-#define PD_6P5V_PERCENT		85
-#define PD_7P5V_PERCENT		75
-#define PD_8P5V_PERCENT		70
-#define PD_9V_PERCENT		65
-#define PD_MICRO_5V		5000000
-#define PD_MICRO_5P9V	5900000
-#define PD_MICRO_6P5V	6500000
-#define PD_MICRO_7P5V	7500000
-#define PD_MICRO_8P5V	8500000
-#define PD_MICRO_9V		9000000
-#define ICL_LIMIT_LEVEL_THR		8
 
 #define QC2_UNSUPPORTED_UA		1800000
 /* defined for HVDCP2 */
@@ -133,6 +122,8 @@ enum print_reason {
 #define CHARGER_RECHECK_DELAY_MS	30000
 #define TYPE_RECHECK_TIME_5S	5000
 #define TYPE_RECHECK_COUNT	3
+
+#define BATTERY_TURBO_DELAY_MS 30000
 
 /* defined for un_compliant Type-C cable */
 #define CC_UN_COMPLIANT_START_DELAY_MS	700
@@ -147,7 +138,7 @@ enum print_reason {
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
 #define DCP_CURRENT_UA			1600000
-#define HVDCP_CURRENT_UA		2800000
+#define HVDCP_CURRENT_UA		3000000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
 #define TYPEC_HIGH_CURRENT_UA		3000000
@@ -464,6 +455,7 @@ struct smb_charger {
 	struct mutex		dr_lock;
 	struct mutex		irq_status_lock;
 	spinlock_t		typec_pr_lock;
+	//spinlock_t		bt_lock;
 
 	/* power supplies */
 	struct power_supply		*batt_psy;
@@ -542,6 +534,7 @@ struct smb_charger {
 	struct delayed_work	role_reversal_check;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
+	struct delayed_work	battery_turbo_work;
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -592,7 +585,6 @@ struct smb_charger {
 	int 		*thermal_mitigation_bpp_qc3;
 	int 		*thermal_mitigation_bpp_qc2;
 	int 		*thermal_mitigation_bpp;
-#else
 	int			*thermal_mitigation;
 #endif
 	int			dcp_icl_ua;
@@ -681,6 +673,10 @@ struct smb_charger {
 	/* battery profile */
 	int			batt_profile_fcc_ua;
 	int			batt_profile_fv_uv;
+	int			non_fcc_batt_profile_fv_uv;
+
+	int			chg_term_curr_ma;
+	int			ffc_term_curr_ma;
 
 	int			usb_icl_delta_ua;
 	int			pulse_cnt;
