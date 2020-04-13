@@ -37,6 +37,9 @@
 
 #define GSI_STTS_REG_BITS 32
 
+#undef WARN_ON
+#define WARN_ON(args) args
+
 #ifndef CONFIG_DEBUG_FS
 void gsi_debugfs_init(void)
 {

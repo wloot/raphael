@@ -3,7 +3,7 @@
  *
  * Coypritht (c) 2017 Goodix
  */
-#define DEBUG
+
 #define pr_fmt(fmt)     "gf_platform: " fmt
 
 #include <linux/delay.h>
