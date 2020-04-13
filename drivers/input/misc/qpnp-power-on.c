@@ -32,6 +32,7 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
 #include <linux/regulator/of_regulator.h>
+#include <linux/syscalls.h>
 
 #define PMIC_VER_8941				0x01
 #define PMIC_VERSION_REG			0x0105
@@ -154,6 +155,10 @@
 
 #define QPNP_POFF_REASON_UVLO			13
 
+#define FS_SYNC_INTERVAL_MS			500
+#define FS_SYNC_MAX_TIMERS 			8  //Final sync time FS_SYNC_INTERVAL_MS*FS_SYNC_MAX_TIMERS
+#define FS_SYNC_DEBOUNCE			2*1000*1000 //FS sync debounce
+
 enum qpnp_pon_version {
 	QPNP_PON_GEN1_V1,
 	QPNP_PON_GEN1_V2,
@@ -227,6 +232,7 @@ struct qpnp_pon {
 	int			resin_warm_reset_type;
 	int			resin_hard_reset_type;
 	int			resin_shutdown_type;
+	u8			fs_sync_counter;
 	bool			is_spon;
 	bool			store_hard_reset_reason;
 	bool			resin_hard_reset_disable;
@@ -236,6 +242,8 @@ struct qpnp_pon {
 	bool			kpdpwr_dbc_enable;
 	bool			resin_pon_reset;
 	ktime_t			kpdpwr_last_release_time;
+	struct delayed_work	fsync_timer;
+	spinlock_t		fs_sync_lock;
 };
 
 static int pon_ship_mode_en;
@@ -908,6 +916,42 @@ static struct qpnp_pon_config *qpnp_get_cfg(struct qpnp_pon *pon, u32 pon_type)
 	return NULL;
 }
 
+static void fs_sync_func(struct work_struct *work)
+{
+	struct qpnp_pon *pon = sys_reset_dev;
+	int rc;
+	uint pon_rt_sts;
+	u8 sync_counter;
+
+	if (pon->fs_sync_counter == 0)
+	{
+		rc = regmap_read(pon->regmap, QPNP_PON_RT_STS(pon), &pon_rt_sts);
+		if (rc) {
+			dev_err(pon->dev, "Unable to read PON RT status\n");
+			return;
+		}
+		rc = !(pon_rt_sts & QPNP_PON_KPDPWR_N_SET) && !(pon_rt_sts & QPNP_PON_KPDPWR_RESIN_BARK_N_SET);
+		if (rc)
+			return;
+
+		dev_info(pon->dev, "Syncing filesystem\n");
+	}
+	sys_sync();
+
+	spin_lock_irq(&pon->fs_sync_lock);
+	sync_counter = pon->fs_sync_counter++;
+	if (sync_counter < FS_SYNC_MAX_TIMERS - 1)
+	{
+		spin_unlock_irq(&pon->fs_sync_lock);
+		schedule_delayed_work(&pon->fsync_timer, msecs_to_jiffies(FS_SYNC_INTERVAL_MS));
+	}
+	else
+	{
+		pon->fs_sync_counter = 0;
+		spin_unlock_irq(&pon->fs_sync_lock);
+	}
+}
+
 static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 {
 	struct qpnp_pon_config *cfg = NULL;
@@ -974,6 +1018,14 @@ static int qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 		input_sync(pon->pon_input);
 	}
 
+	if ((cfg->pon_type == PON_KPDPWR || cfg->pon_type == PON_KPDPWR_RESIN)
+ && key_status)
+	{
+		spin_lock(&pon->fs_sync_lock);
+		pon->fs_sync_counter = 0;
+		spin_unlock(&pon->fs_sync_lock);
+		schedule_delayed_work(&pon->fsync_timer, msecs_to_jiffies(4*FS_SYNC_INTERVAL_MS));
+	}
 	input_report_key(pon->pon_input, cfg->key_code, key_status);
 	input_sync(pon->pon_input);
 
@@ -2373,6 +2425,10 @@ static int qpnp_pon_probe(struct platform_device *pdev)
 			rc);
 		return rc;
 	}
+
+	pon->fs_sync_counter = 0;
+	spin_lock_init(&pon->fs_sync_lock);
+	INIT_DELAYED_WORK(&pon->fsync_timer, fs_sync_func);
 
 	if (sys_reset)
 		sys_reset_dev = pon;
