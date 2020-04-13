@@ -1761,6 +1761,12 @@ static int adreno_init(struct kgsl_device *device)
 
 	}
 
+	#define CONFIG_GPU_MAX_FREQ 650000000
+	if (device->pwrscale.devfreqptr->max_freq == 810000000) {
+		if (CONFIG_GPU_MAX_FREQ >= device->pwrscale.devfreqptr->min_freq)
+			device->pwrscale.devfreqptr->max_freq = CONFIG_GPU_MAX_FREQ;
+	}
+
 	return 0;
 }
 
