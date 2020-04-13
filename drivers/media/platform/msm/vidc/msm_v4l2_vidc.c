@@ -500,9 +500,10 @@ static const struct of_device_id msm_vidc_dt_match[] = {
 	{}
 };
 static int msm_vidc_register_video_device(enum session_type sess_type,
-		int nr, struct msm_vidc_core *core, struct device *dev)
+		int nr, struct msm_vidc_core *core)
 {
 	int rc = 0;
+	struct device *dev;
 
 	core->vdev[sess_type].vdev.release =
 		msm_vidc_release_video_device;
@@ -531,7 +532,6 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 {
 	int rc = 0;
 	struct msm_vidc_core *core;
-	struct device *dev;
 	int nr = BASE_DEVICE_NUMBER;
 
 	if (!vidc_driver) {
@@ -567,7 +567,7 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 
 	/* setup the decoder device */
 	rc = msm_vidc_register_video_device(MSM_VIDC_DECODER,
-			nr, core, dev);
+			nr, core);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to register video decoder\n");
 		goto err_dec;
@@ -575,7 +575,7 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 
 	/* setup the encoder device */
 	rc = msm_vidc_register_video_device(MSM_VIDC_ENCODER,
-			nr + 1, core, dev);
+			nr + 1, core);
 	if (rc) {
 		dprintk(VIDC_ERR, "Failed to register video encoder\n");
 		goto err_enc;
@@ -584,7 +584,7 @@ static int msm_vidc_probe_vidc_device(struct platform_device *pdev)
 	/* setup the cvp device */
 	if (core->resources.domain_cvp) {
 		rc = msm_vidc_register_video_device(MSM_VIDC_CVP,
-				nr + 2, core, dev);
+				nr + 2, core);
 		if (rc) {
 			dprintk(VIDC_ERR, "Failed to register video CVP\n");
 			goto err_cvp;

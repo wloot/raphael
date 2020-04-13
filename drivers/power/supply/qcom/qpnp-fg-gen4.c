@@ -6263,7 +6263,6 @@ static int fg_gen4_resume(struct device *dev)
 {
 	struct fg_gen4_chip *chip = dev_get_drvdata(dev);
 	struct fg_dev *fg = &chip->fg;
-	int val = 0;
 
 	schedule_delayed_work(
 			&fg->soc_work, msecs_to_jiffies(SOC_WORK_MS));
