@@ -26,6 +26,7 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/sched/core_ctl.h>
+#include <linux/sched/sysctl.h>
 
 /*
  * Sched will provide the data for every 20ms window,
@@ -76,6 +77,17 @@ static int set_cpu_min_freq(const char *buf, const struct kernel_param *kp)
 			return -EINVAL;
 		if (cpu > (num_present_cpus() - 1))
 			return -EINVAL;
+
+		if (cpu < 4 && val == 1305600)
+			return -EINVAL;
+
+		if (cpu == 7) {
+			if (val >= 2956800) {
+				sysctl_sched_energy_aware = 0;
+			} else {
+				sysctl_sched_energy_aware = 1;
+			}
+		}
 
 		i_cpu_stats = &per_cpu(cpu_stats, cpu);
 
@@ -382,67 +394,6 @@ static int init_events_group(void)
 
 	return 0;
 }
-
-static void nr_notify_userspace(struct work_struct *work)
-{
-	sysfs_notify(notify_kobj, NULL, "aggr_top_load");
-	sysfs_notify(notify_kobj, NULL, "aggr_big_nr");
-}
-
-static int msm_perf_core_ctl_notify(struct notifier_block *nb,
-				    unsigned long unused,
-				    void *data)
-{
-	static unsigned int tld, nrb, i;
-	static DECLARE_WORK(sysfs_notify_work, nr_notify_userspace);
-	struct core_ctl_notif_data *d = data;
-
-
-	nrb += d->nr_big;
-	tld += d->coloc_load_pct;
-	i++;
-	if (i == POLL_INT) {
-		aggr_big_nr = ((nrb%POLL_INT) ? 1 : 0) + nrb/POLL_INT;
-		aggr_top_load = tld/POLL_INT;
-		tld = 0;
-		nrb = 0;
-		i = 0;
-		schedule_work(&sysfs_notify_work);
-	}
-	return NOTIFY_OK;
-}
-
-static struct notifier_block msm_perf_nb = {
-	.notifier_call = msm_perf_core_ctl_notify
-};
-
-static bool core_ctl_register;
-static int set_core_ctl_register(const char *buf, const struct kernel_param *kp)
-{
-	int ret;
-	bool old_val = core_ctl_register;
-
-	ret = param_set_bool(buf, kp);
-	if (ret < 0)
-		return ret;
-
-	if (core_ctl_register == old_val)
-		return 0;
-
-	if (core_ctl_register)
-		core_ctl_notifier_register(&msm_perf_nb);
-	else
-		core_ctl_notifier_unregister(&msm_perf_nb);
-
-	return 0;
-}
-
-static const struct kernel_param_ops param_ops_cc_register = {
-	.set = set_core_ctl_register,
-	.get = param_get_bool,
-};
-module_param_cb(core_ctl_register, &param_ops_cc_register,
-		&core_ctl_register, 0644);
 
 static int __init msm_performance_init(void)
 {

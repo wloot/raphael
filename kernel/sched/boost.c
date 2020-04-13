@@ -11,10 +11,23 @@
  */
 
 #include "sched.h"
+#ifdef CONFIG_SCHED_WALT
 #include "walt.h"
 #include <linux/of.h>
 #include <linux/sched/core_ctl.h>
 #include <trace/events/sched.h>
+#endif
+#ifndef CONFIG_SCHED_WALT
+#define NO_BOOST 0
+#define FULL_THROTTLE_BOOST 1
+#define CONSERVATIVE_BOOST 2
+#define RESTRAINED_BOOST 3
+#define RESTRAINED_BOOST_DISABLE -3
+#endif
+
+unsigned int top_app_full_throttle_boost;
+unsigned int top_app_conservative_boost;
+unsigned int top_app_restrained_boost;
 
 /*
  * Scheduler boost is a mechanism to temporarily place tasks on CPUs
@@ -25,11 +38,14 @@
 
 unsigned int sysctl_sched_boost; /* To/from userspace */
 unsigned int sched_boost_type; /* currently activated sched boost */
+#ifdef CONFIG_SCHED_WALT
 enum sched_boost_policy boost_policy;
 
 static enum sched_boost_policy boost_policy_dt = SCHED_BOOST_NONE;
+#endif
 static DEFINE_MUTEX(boost_mutex);
 
+#ifdef CONFIG_SCHED_WALT
 /*
  * Scheduler boost type and boost policy might at first seem unrelated,
  * however, there exists a connection between them that will allow us
@@ -60,6 +76,7 @@ static void set_boost_policy(int type)
 
 	boost_policy = SCHED_BOOST_ON_ALL;
 }
+#endif
 
 static bool verify_boost_params(int type)
 {
@@ -72,34 +89,52 @@ static void sched_no_boost_nop(void)
 
 static void sched_full_throttle_boost_enter(void)
 {
+#ifdef CONFIG_SCHED_WALT
 	core_ctl_set_boost(true);
 	walt_enable_frequency_aggregation(true);
+#endif
+	top_app_full_throttle_boost = 1;
 }
 
 static void sched_full_throttle_boost_exit(void)
 {
+#ifdef CONFIG_SCHED_WALT
 	core_ctl_set_boost(false);
 	walt_enable_frequency_aggregation(false);
+#endif
+	top_app_full_throttle_boost = 0;
 }
 
 static void sched_conservative_boost_enter(void)
 {
+#ifdef CONFIG_SCHED_WALT
 	update_cgroup_boost_settings();
+#endif
+	top_app_conservative_boost = 1;
 }
 
 static void sched_conservative_boost_exit(void)
 {
+#ifdef CONFIG_SCHED_WALT
 	restore_cgroup_boost_settings();
+#endif
+	top_app_conservative_boost = 0;
 }
 
 static void sched_restrained_boost_enter(void)
 {
+#ifdef CONFIG_SCHED_WALT
 	walt_enable_frequency_aggregation(true);
+#endif
+	top_app_restrained_boost = 1;
 }
 
 static void sched_restrained_boost_exit(void)
 {
+#ifdef CONFIG_SCHED_WALT
 	walt_enable_frequency_aggregation(false);
+#endif
+	top_app_restrained_boost = 0;
 }
 
 struct sched_boost_data {
@@ -230,10 +265,13 @@ static void _sched_set_boost(int type)
 
 	sched_boost_type = sched_effective_boost();
 	sysctl_sched_boost = sched_boost_type;
+#ifdef CONFIG_SCHED_WALT
 	set_boost_policy(sysctl_sched_boost);
 	trace_sched_set_boost(sysctl_sched_boost);
+#endif
 }
 
+#ifdef CONFIG_SCHED_WALT
 void sched_boost_parse_dt(void)
 {
 	struct device_node *sn;
@@ -250,10 +288,13 @@ void sched_boost_parse_dt(void)
 			boost_policy_dt = SCHED_BOOST_ON_ALL;
 	}
 }
+#endif
 
 int sched_set_boost(int type)
 {
 	int ret = 0;
+
+	return 0;
 
 	mutex_lock(&boost_mutex);
 	if (verify_boost_params(type))

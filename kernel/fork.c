@@ -2119,6 +2119,10 @@ long _do_fork(unsigned long clone_flags,
 			get_task_struct(p);
 		}
 
+		p->top_app = 0;
+		p->inherit_top_app = 0;
+		p->top_app_no_override = 0;
+
 		wake_up_new_task(p);
 
 		/* forking complete and child started to run, tell ptracer */
