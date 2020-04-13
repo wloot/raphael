@@ -259,12 +259,14 @@ enum {
 	IDX_SECONDARY_SPDIF_RX,
 	IDX_PRIMARY_SPDIF_TX,
 	IDX_SECONDARY_SPDIF_TX,
+
 	/* IDX 185 to 186 */
 	IDX_SLIMBUS_9_RX,
 	IDX_SLIMBUS_9_TX,
 	/* IDX 187 -> 189 */
 	IDX_AFE_PORT_ID_SENARY_PCM_RX,
 	IDX_AFE_PORT_ID_SENARY_PCM_TX,
+        IDX_AFE_PORT_ID_PSEUDOPORT_01,
 	AFE_MAX_PORTS
 };
 
@@ -456,6 +458,13 @@ int afe_get_sp_rx_tmax_xmax_logging_data(
 		u16 port_id);
 int afe_cal_init_hwdep(void *card);
 int afe_send_port_island_mode(u16 port_id);
+
+#ifdef CONFIG_MSM_CSPL
+int afe_apr_send_pkt_crus(void *data, int index, int set);
+int crus_afe_port_close(u16 port_id);
+int crus_afe_port_start(u16 port_id);
+#endif
+
 int afe_send_cmd_wakeup_register(void *handle, bool enable);
 void afe_register_wakeup_irq_callback(
 	void (*afe_cb_wakeup_irq)(void *handle));

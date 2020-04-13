@@ -29,7 +29,7 @@
  * default limit of 8 VAPs per device.
  */
 /* Rome PRD support 4 vdevs */
-#define CFG_TGT_NUM_VDEV                4
+#define CFG_TGT_NUM_VDEV                5
 
 /*
  * We would need 1 AST entry per peer. Scale it by a

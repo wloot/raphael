@@ -48,6 +48,17 @@ config SMB1355_SLAVE_CHARGER
 	  The driver reports the charger status via the power supply framework.
 	  A charger status change triggers an IRQ via the device STAT pin.
 
+config IDT_P9220
+	tristate "idtp9220 wireless Charger"
+	depends on I2C
+	help
+	  Say Y to include support for idtp9220 wireless Charger.
+	  idtp9220 is a wireless battery charger.
+	  The driver supports charger enable/disable.
+	  The driver reports the charger status via the power supply framework.
+	  The driver controls idtp9220 via I2C and
+	  supports device-tree interface.
+
 config QPNP_SMB2
 	tristate "SMB2 Battery Charger"
 	depends on MFD_SPMI_PMIC
@@ -119,18 +130,5 @@ config SMB1390_CHARGE_PUMP_PSY
 	  power supply framework.
 	  SMB1390 is a div2 charge pump capable of delivering 6A charge current
 	  with very high efficiency.
-
-config SMB1398_CHARGER
-	tristate "SMB1398 power supply framework based driver"
-	depends on MFD_I2C_PMIC
-	help
-	  Say Y to include the support of SMB1398 Charge driver based on power
-	  supply framework.
-	  SMB1398 is a combo charger chip which can work in different modes:
-	  (1) DIV2 charge pump mode to work as a companion charger to be paired
-	      with Qualcomm Technologies, Inc.’s family of standalone chargers;
-	  (2) DIV2 and 3-level buck combo mode to regulate the output power from
-	      wireless charger receiver and provide the input for downstream
-	      chargers.
 
 endmenu
