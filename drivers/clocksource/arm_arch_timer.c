@@ -192,6 +192,8 @@ struct ate_acpi_oem_info {
 	u32 oem_revision;
 };
 
+#ifdef CONFIG_ARM_ARCH_TIMER_OOL_WORKAROUND
+
 #ifdef CONFIG_FSL_ERRATUM_A008585
 /*
  * The number of retries is an arbitrary value well beyond the highest number
@@ -309,7 +311,6 @@ static u64 notrace arm64_1188873_read_cntvct_el0(void)
 }
 #endif
 
-#ifdef CONFIG_ARM_ARCH_TIMER_OOL_WORKAROUND
 DEFINE_PER_CPU(const struct arch_timer_erratum_workaround *,
 	       timer_unstable_counter_workaround);
 EXPORT_SYMBOL_GPL(timer_unstable_counter_workaround);
