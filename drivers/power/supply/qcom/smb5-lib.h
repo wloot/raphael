@@ -112,18 +112,6 @@ enum print_reason {
 
 /* thermal micros */
 #define MAX_TEMP_LEVEL		16
-/* percent of ICL compared to base 5V for different PD voltage_min voltage */
-#define PD_6P5V_PERCENT		85
-#define PD_7P5V_PERCENT		75
-#define PD_8P5V_PERCENT		70
-#define PD_9V_PERCENT		65
-#define PD_MICRO_5V		5000000
-#define PD_MICRO_5P9V	5900000
-#define PD_MICRO_6P5V	6500000
-#define PD_MICRO_7P5V	7500000
-#define PD_MICRO_8P5V	8500000
-#define PD_MICRO_9V		9000000
-#define ICL_LIMIT_LEVEL_THR		8
 
 #define QC2_UNSUPPORTED_UA		1800000
 /* defined for HVDCP2 */
@@ -592,7 +580,6 @@ struct smb_charger {
 	int 		*thermal_mitigation_bpp_qc3;
 	int 		*thermal_mitigation_bpp_qc2;
 	int 		*thermal_mitigation_bpp;
-#else
 	int			*thermal_mitigation;
 #endif
 	int			dcp_icl_ua;
