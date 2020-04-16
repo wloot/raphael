@@ -315,3 +315,8 @@
 		qcom,panel-allow-phy-poweroff;
 		qcom,dsi-phy-regulator-min-datarate-bps = <1200000000>;
 };
+
+&mdss_dsi_phy1 {
+		qcom,panel-allow-phy-poweroff;
+		qcom,dsi-phy-regulator-min-datarate-bps = <1200000000>;
+};
