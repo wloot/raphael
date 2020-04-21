@@ -1,0 +1,23 @@
+name: Trigger tigger
+on:
+  push:
+    branches:
+      - misc
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger build
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git clone https://wloot:$GH_TOKEN@github.com/wzyhan/ci_scripts -b wloot --depth=1 CI
+          cd CI
+          git config user.name "Julian Liu"
+          git config user.email wlootlxt123@gmail.com
+          echo "wloot/SM8150-MI" > repo
+          echo "misc" > branch
+          git add .
+          git commit --amend -C HEAD
+          git push -f
