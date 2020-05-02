@@ -1979,12 +1979,18 @@ static inline void set_wake_up_idle(bool enabled)
 
 static inline bool is_top_app(struct task_struct *p)
 {
-	return p && p->top_app > 0;
+	if (unlikely(!p))
+		return false;
+
+	return p->top_app > 0;
 }
 
 static inline bool is_inherit_top_app(struct task_struct *p)
 {
-	return p && p->inherit_top_app > 0;
+	if (unlikely(!p))
+		return false;
+
+	return p->inherit_top_app > 0;
 }
 
 static inline bool is_critical_task(struct task_struct *p)
@@ -1995,18 +2001,18 @@ static inline bool is_critical_task(struct task_struct *p)
 static inline void set_inherit_top_app(struct task_struct *p,
 				struct task_struct *from)
 {
-	if (!p || !from)
+	if (unlikely(!from) || from->inherit_top_app >= INHERIT_DEPTH)
 		return;
-	if (is_critical_task(p) || from->inherit_top_app >= INHERIT_DEPTH)
+	if (is_critical_task(p))
 		return;
+
 	p->inherit_top_app = from->inherit_top_app + 1;
 }
 
 static inline void restore_inherit_top_app(struct task_struct *p)
 {
-	if (p && is_inherit_top_app(p)) {
+	if (is_inherit_top_app(p))
 		p->inherit_top_app = 0;
-	}
 }
 
 #endif
