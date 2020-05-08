@@ -7569,6 +7569,11 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			if (fbt_env->skip_cpu == i)
 				continue;
 
+			if (i < mid_cap_orig_cpu && prev_cpu >= mid_cap_orig_cpu &&
+				schedtune_task_boost_rcu_locked(p) &&
+				!task_fits_capacity(p, capacity_orig, i))
+				continue;
+
 			/*
 			 * p's blocked utilization is still accounted for on prev_cpu
 			 * so prev_cpu will receive a negative bias due to the double
