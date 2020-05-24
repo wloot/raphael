@@ -1727,6 +1727,9 @@ cpu_limits_show(struct device *dev,
 	return 0;
 }
 
+static unsigned int skip_therm = 0;
+module_param(skip_therm, uint, S_IWUSR | S_IRUGO);
+
 static ssize_t
 cpu_limits_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
@@ -1738,6 +1741,9 @@ cpu_limits_store(struct device *dev,
 		pr_err("input param error, can not prase param\n");
 		return -EINVAL;
 	}
+
+	if (skip_therm)
+		max = UINT_MAX;
 
 	cpu_limits_set_level(cpu, max);
 
