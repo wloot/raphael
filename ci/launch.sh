@@ -6,14 +6,15 @@ cd "$(dirname "$0")"
 CHATID="-1001242020761"
 BOTTOKEN="932499925:AAH1dPvHz2DQPretXqAra9kGb_9jjEOCj5g"
 
-apt-get install -y build-essential libssl-dev bison python bc curl zip flex --no-install-recommends
+apt-get install -y build-essential libssl-dev bison python bc curl zip flex unzip --no-install-recommends
 
 function tg_upload()
 {
   curl -s https://api.telegram.org/bot"${BOTTOKEN}"/sendDocument -F document=@"${1}" -F chat_id="${CHATID}"
 }
 
-git clone https://github.com/kdrag0n/proton-clang tc --depth=1
+curl -L -O https://github.com/kdrag0n/proton-clang/archive/master.zip
+unzip master.zip && mv proton-clang-master/ tc/
 export PATH="$(pwd)/tc/bin:$PATH"
 
 cd ..
